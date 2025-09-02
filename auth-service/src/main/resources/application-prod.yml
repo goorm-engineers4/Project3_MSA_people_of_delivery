@@ -1,15 +1,20 @@
 server:
   port: 8015
 
-eureka:
-  instance:
-    prefer-ip-address: true
-  client:
-    enabled: true
-    register-with-eureka: true
-    fetch-registry: true
-    serviceUrl:
-      defaultZone: http://discovery:8761/eureka/
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always     # 상세 정보 표시
+  health:
+    db:
+      enabled: false           # DB 체크 비활성화
+    redis:
+      enabled: false
 
 spring:
   application:
@@ -24,10 +29,10 @@ spring:
         highlight_sql: true
 
   datasource:
-    url: ${LOCAL_DB_URL}
+    url: ${DB_URL}
     driver-class-name: org.postgresql.Driver
-    username: ${LOCAL_DB_USERNAME}
-    password: ${LOCAL_DB_PASSWORD}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   cloud:
     config:
       enabled: false
@@ -53,14 +58,6 @@ spring:
           timeout: 5000
           writetimeout: 5000
     auth-code-expiration-millis: 1800000
-
-  springdoc:
-    api-docs:
-      version: openapi_3_1
-      enabled: true
-    enable-spring-security: true
-    default-consumes-media-type: application/json
-    default-produces-media-type: application/json
 
 jwt:
   issuer: http://auth-service

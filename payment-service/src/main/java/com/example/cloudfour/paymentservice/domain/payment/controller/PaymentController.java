@@ -26,7 +26,7 @@ import java.util.UUID;
 @RequestMapping("/api/payments")
 @Tag(name="Payment", description = "토스페이먼츠 결제 관리 API")
 @Validated
-public class  PaymentController {
+public class PaymentController {
     
     private final PaymentCommandService paymentCommandService;
     private final PaymentQueryService paymentQueryService;

@@ -1,10 +1,24 @@
 server:
-  port: 8012
+  port: 8017
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always     # 상세 정보 표시
+  health:
+    db:
+      enabled: false           # DB 체크 비활성화
+    redis:
+      enabled: false
 
 spring:
   application:
-    name: cart-service
-
+    name: payment-service
   jpa:
     hibernate.ddl-auto: update
     show-sql: true
@@ -13,31 +27,18 @@ spring:
         format_sql: true
         highlight_sql: true
 
-    eureka:
-      instance:
-        prefer-ip-address: true
-      client:
-        register-with-eureka: true
-        fetch-registry: true
-        serviceUrl:
-          defaultZone: http://localhost:8761/eureka/
-
   datasource:
-    url: ${LOCAL_DB_URL}
+    url: ${DB_URL}
     driver-class-name: org.postgresql.Driver
-    username: ${LOCAL_DB_USERNAME}
-    password: ${LOCAL_DB_PASSWORD}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   cloud:
     config:
       enabled: false
 
-  springdoc:
-    api-docs:
-      version: openapi_3_1
-      enabled: true
-    enable-spring-security: true
-    default-consumes-media-type: application/json
-    default-produces-media-type: application/json
+toss:
+  secret-key: ${TOSS_SECRET}
+  webhook-secret: ${TOSS_WEBHOOK_SECRET:webhook_secret_key}
 
 kafka:
   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -49,18 +50,16 @@ kafka:
     batch-size: 16384
     linger-ms: 10
     buffer-memory: 33554432
+    properties:
+      enable.idempotence: true
   consumer:
-    group-id: order-service-group
+    group-id: payment-service-group
     auto-offset-reset: earliest
     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
     enable-auto-commit: false
     properties:
-      spring.json.trusted.packages: "com.example.cloudfour.paymentservice.domain.payment.event,com.example.cloudfour.cartservice.event"
+      spring.json.trusted.packages: "com.example.cloudfour.cartservice.event,com.example.cloudfour.paymentservice.domain.payment.event"
   topic:
     order-events: order-events
     payment-events: payment-events
-
-
-
-

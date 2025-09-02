@@ -1,26 +1,30 @@
 server:
   port: 8013
 
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    serviceUrl:
+      defaultZone: http://discovery:8761/eureka/
+
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.mongodb.core.MongoOperations: DEBUG
+
 spring:
   application:
     name: store-service
-
   jpa:
-    hibernate.ddl-auto: create
+    hibernate.ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         highlight_sql: true
-
-    eureka:
-      instance:
-        prefer-ip-address: true
-      client:
-        register-with-eureka: true
-        fetch-registry: true
-        serviceUrl:
-          defaultZone: http://localhost:8761/eureka/
 
   springdoc:
     api-docs:
@@ -36,7 +40,6 @@ spring:
   datasource:
     url: ${LOCAL_DB_URL}
     driver-class-name: org.postgresql.Driver
-    #    driver-class-name: org.h2.Driver # 테스트용
     username: ${LOCAL_DB_USERNAME}
     password: ${LOCAL_DB_PASSWORD}
   cloud:

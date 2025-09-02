@@ -1,0 +1,50 @@
+server:
+  port: 8013
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always     # 상세 정보 표시
+  health:
+    db:
+      enabled: false           # DB 체크 비활성화
+    redis:
+      enabled: false
+    mongo:
+      enabled: false
+
+spring:
+  application:
+    name: store-service
+  jpa:
+    hibernate.ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+  data:
+    mongodb:
+      uri: ${MONGO_URI}
+
+  datasource:
+    url: ${DB_URL}
+    driver-class-name: org.postgresql.Driver
+    # driver-class-name: org.h2.Driver # 테스트용
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  cloud:
+    config:
+      enabled: false
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration

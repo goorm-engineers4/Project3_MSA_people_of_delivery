@@ -1,10 +1,9 @@
-package com.example.cloudfour.storeservice.scheduler;
+package com.example.cloudfour.storeservice.domain.review.scheduler;
 
+import com.example.cloudfour.storeservice.domain.collection.converter.DocumentConverter;
+import com.example.cloudfour.storeservice.domain.collection.document.ReviewDocument;
 import com.example.cloudfour.storeservice.domain.collection.repository.command.ReviewCommandRepository;
-import com.example.cloudfour.storeservice.domain.collection.repository.command.StockCommandRepository;
 import com.example.cloudfour.storeservice.domain.common.enums.SyncStatus;
-import com.example.cloudfour.storeservice.domain.menu.entity.Stock;
-import com.example.cloudfour.storeservice.domain.menu.repository.StockRepository;
 import com.example.cloudfour.storeservice.domain.review.entity.Review;
 import com.example.cloudfour.storeservice.domain.review.repository.ReviewRepository;
 import com.example.cloudfour.storeservice.domain.store.entity.Store;
@@ -19,19 +18,47 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
 @Transactional
 @RequiredArgsConstructor
-public class MongoUpdatedSyncScheduler {
-    private final ReviewCommandRepository reviewCommandRepository;
-    private final StockCommandRepository stockCommandRepository;
-    private final ReviewRepository reviewRepository;
-    private final StoreRepository storeRepository;
-    private final StockRepository stockRepository;
+public class ReviewMongoScheduler {
 
-    @Scheduled(cron = "0 * * * * *")
+    private final ReviewRepository reviewRepository;
+    private final ReviewCommandRepository reviewCommandRepository;
+    private final StoreRepository storeRepository;
+
+    @Scheduled(cron = "0 0 4 * * *")
+    public void createReview(){
+        log.info("MongoDB에 리뷰 동기화 시작");
+        List<Review> reviews = reviewRepository.findAllBySyncStatus(SyncStatus.CREATED_PENDING);
+        if(reviews.isEmpty()){
+            log.info("MongoDB에 생성할 리뷰가 존재하지 않음");
+            return;
+        }
+        List<ReviewDocument> reviewDocuments = reviews.stream().map(DocumentConverter::toReviewDocument).toList();
+        reviewCommandRepository.saveAll(reviewDocuments);
+        reviews.forEach(Review::syncCreated);
+        reviewRepository.saveAll(reviews);
+        log.info("MongoDB에 리뷰 동기화 완료");
+    }
+
+    @Scheduled(cron = "0 0 4 * * *")
+    public void deleteReview(){
+        log.info("MongoDB에 리뷰 삭제 동기화 시작");
+        List<Review> reviews = reviewRepository.findAllByIsDeleted();
+        if(reviews.isEmpty()){
+            log.info("삭제할 리뷰 데이터 없음");
+            return;
+        }
+        List<UUID> reviewIds = reviews.stream().map(Review::getId).toList();
+        reviewCommandRepository.deleteAllByReviewIdIn(reviewIds);
+        log.info("MongoDB에 리뷰 삭제 완료");
+    }
+
+    @Scheduled(cron = "0 0 4 * * *")
     public void refreshReviews(){
         log.info("MongoDB에 리뷰 최신화 시작");
         Pageable pageable = PageRequest.of(0,3);
@@ -43,21 +70,5 @@ public class MongoUpdatedSyncScheduler {
             reviewCommandRepository.updateStoreReview(store.getId(),store.getReviewCount(),store.getRating());
             log.info("MongoDB에 리뷰 최신화 완료");
         }
-    }
-
-    @Scheduled(cron = "0 * * * * *")
-    public void refreshQuantity(){
-        log.info("MongoDB에 수량 최신화 시작");
-        List<Stock> pendingStocks = stockRepository.findAllBySyncStatus(SyncStatus.UPDATED_PENDING);
-        if(pendingStocks.isEmpty()){
-            log.info("MongoDB에 최신화할 수량아 존재하지 않음");
-        }
-
-        for(Stock stock: pendingStocks){
-            stockCommandRepository.updateStockByMenuId(stock.getMenu().getId(), stock.getQuantity());
-            stock.setSyncStatus(SyncStatus.UPDATED_SYNCED);
-            stockRepository.save(stock);
-        }
-        log.info("MongoDB에 수량 최신화 완료");
     }
 }

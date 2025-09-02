@@ -13,41 +13,32 @@ spring:
         format_sql: true
         highlight_sql: true
 
-    eureka:
-      instance:
-        prefer-ip-address: true
-      client:
-        register-with-eureka: true
-        fetch-registry: true
-        serviceUrl:
-          defaultZone: http://localhost:8761/eureka/
 
   datasource:
-    url: ${LOCAL_DB_URL}
+    url: ${DB_URL}
     driver-class-name: org.postgresql.Driver
     #    driver-class-name: org.h2.Driver # 테스트용
-    username: ${LOCAL_DB_USERNAME}
-    password: ${LOCAL_DB_PASSWORD}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   cloud:
     config:
       enabled: false
 
-  springdoc:
-    api-docs:
-      version: openapi_3_1
-      enabled: true
-    enable-spring-security: true
-    default-consumes-media-type: application/json
-    default-produces-media-type: application/json
 
 management:
   endpoints:
     web:
+      base-path: /actuator
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: always     # 상세 정보 표시
+  health:
+    db:
+      enabled: false           # DB 체크 비활성화
+    redis:
+      enabled: false
 
 weather:
   api:
@@ -58,6 +49,7 @@ gemini:
   api:
     key: ${GEMINI_API_KEY:}
     url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+
 
 logging:
   level:

@@ -4,7 +4,9 @@ server:
 spring:
   application:
     name: module-common
-
+  batch:
+      job:
+        enabled: false
   jpa:
     hibernate.ddl-auto: update
     show-sql: true
@@ -25,7 +27,6 @@ spring:
   datasource:
     url: ${LOCAL_DB_URL}
     driver-class-name: org.postgresql.Driver
-    #    driver-class-name: org.h2.Driver # 테스트용
     username: ${LOCAL_DB_USERNAME}
     password: ${LOCAL_DB_PASSWORD}
   cloud:

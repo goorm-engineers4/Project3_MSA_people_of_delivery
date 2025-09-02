@@ -1,0 +1,76 @@
+services:
+  postgres-common:
+    image: postgres:latest
+    container_name: common-postgres
+    ports:
+      - 5433:5432
+    environment:
+      - POSTGRES_DB=common_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  postgres-cart:
+    image: postgres:latest
+    container_name: cart-postgres
+    depends_on:
+      - postgres-common
+    ports:
+      - 5434:5432
+    environment:
+      - POSTGRES_DB=cart_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  postgres-store:
+    image: postgres:latest
+    container_name: store-postgres
+    depends_on:
+      - postgres-common
+    ports:
+      - 5435:5432
+    environment:
+    - POSTGRES_DB=store_db
+    - POSTGRES_USER=user
+    - POSTGRES_PASSWORD=password
+
+  postgres-user:
+    image: postgres:latest
+    container_name: user-postgres
+    depends_on:
+      - postgres-common
+    ports:
+      - 5436:5432
+    environment:
+      - POSTGRES_DB=user_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  postgres-ai:
+    image: postgres:latest
+    container_name: ai-postgres
+    depends_on:
+      - postgres-common
+    ports:
+      - 5437:5432
+    environment:
+      - POSTGRES_DB=ai_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  postgres-auth:
+    image: postgres:latest
+    container_name: auth-postgres
+    depends_on:
+      - postgres-common
+    ports:
+      - 5438:5432
+    environment:
+      - POSTGRES_DB=auth_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  redis:
+    image: redis:latest
+    container_name: my-redis
+    ports:
+      - 6379:6379
