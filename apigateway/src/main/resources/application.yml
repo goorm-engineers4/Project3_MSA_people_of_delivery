@@ -1,0 +1,146 @@
+server:
+  port: 8080
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+          routes:
+            - id: store-service-openapi
+              uri: lb://store-service
+              predicates:
+                - Path=/api/store-service/v3/api-docs, /api/store-service/swagger-ui/**, /api/store-service/swagger-ui.html
+              filters:
+                - RewritePath=/api/store-service/(?<segment>.*),/${segment}
+
+            - id: auth-service-openapi
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth-service/v3/api-docs, /api/auth-service/swagger-ui/**, /api/auth-service/swagger-ui.html
+              filters:
+                - RewritePath=/api/auth-service/(?<segment>.*),/${segment}
+
+            - id: user-service-openapi
+              uri: lb://user-service
+              predicates:
+                - Path=/api/user-service/v3/api-docs, /api/user-service/swagger-ui/**, /api/user-service/swagger-ui.html
+              filters:
+                - RewritePath=/api/user-service/(?<segment>.*),/${segment}
+
+            - id: store-service-openapi
+              uri: lb://store-service
+              predicates:
+                - Path=/api/store-service/v3/api-docs, /api/store-service/swagger-ui/**, /api/store-service/swagger-ui.html
+              filters:
+                - RewritePath=/api/store-service/(?<segment>.*),/${segment}
+
+            - id: cart-service-openapi
+              uri: lb://cart-service
+              predicates:
+                - Path=/api/cart-service/v3/api-docs, /api/cart-service/swagger-ui/**, /api/cart-service/swagger-ui.html
+              filters:
+                - RewritePath=/api/cart-service/(?<segment>.*),/${segment}
+
+            - id: payment-service-openapi
+              uri: lb://payment-service
+              predicates:
+                - Path=/api/payment-service/v3/api-docs, /api/payment-service/swagger-ui/**, /api/payment-service/swagger-ui.html
+              filters:
+                - RewritePath=/api/payment-service/(?<segment>.*),/${segment}
+
+            - id: ai-service-openapi
+              uri: lb://ai-service
+              predicates:
+                - Path=/api/ai-service/v3/api-docs, /api/ai-service/swagger-ui/**, /api/ai-service/swagger-ui.html
+              filters:
+                - RewritePath=/api/ai-service/(?<segment>.*),/${segment}
+
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth-service/**
+              filters:
+                - RewritePath=/api/auth-service/(?<segment>.*),/${segment}
+
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/user-service/**
+              filters:
+                - AuthFilter
+                - RewritePath=/api/user-service/(?<segment>.*),/${segment}
+
+            - id: store-service
+              uri: lb://store-service
+              predicates:
+                - Path=/api/store-service/**
+              filters:
+                - AuthFilter
+                - RewritePath=/api/store-service/(?<segment>.*),/${segment}
+
+            - id: cart-service
+              uri: lb://cart-service
+              predicates:
+                - Path=/api/cart-service/**
+              filters:
+                - AuthFilter
+                - RewritePath=/api/cart-service/(?<segment>.*),/${segment}
+
+            - id: payment-service
+              uri: lb://payment-service
+              predicates:
+                - Path=/api/payment-service/**
+              filters:
+                - AuthFilter
+                - RewritePath=/api/payment-service/(?<segment>.*),/${segment}
+
+            - id: ai-service
+              uri: lb://ai-service
+              predicates:
+                - Path=/api/ai-service/**
+              filters:
+                - AuthFilter
+                - RewritePath=/api/ai-service/(?<segment>.*),/${segment}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    disable-swagger-default-url: true
+    urls:
+      - name: 인증 서비스
+        url: /api/auth-service/v3/api-docs
+      - name: 회원 서비스
+        url: /api/user-service/v3/api-docs
+      - name: 가게 서비스
+        url: /api/store-service/v3/api-docs
+      - name: 주문 서비스
+        url: /api/cart-service/v3/api-docs
+      - name: 결제 서비스
+        url: /api/payment-service/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+jwt:
+  jwk-set-uri: http://localhost:8080/api/auth-service/.well-known/jwks.json
+  issuer: http://auth-service
+  audience: app

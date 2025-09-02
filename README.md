@@ -1,5 +1,3 @@
-# Project3_MSA_people_of_delivery
-
 # backend
 백엔드
 
