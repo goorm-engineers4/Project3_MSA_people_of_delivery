@@ -60,4 +60,23 @@ public class ReviewCommandRepositoryImpl implements ReviewCustomCommandRepositor
         mongoTemplate.updateFirst(query,update,StoreDocument.class);
     }
 
+    @Override
+    public void updateReviewByReviewId(UUID reviewId, Review review) {
+        Query query = Query.query(Criteria.where("id").is(reviewId));
+
+        Update update = new Update()
+                .set("score", review.getScore())
+                .set("content", review.getContent())
+                .set("pictureUrl", review.getPictureUrl());
+
+        mongoTemplate.updateFirst(query, update, ReviewDocument.class);
+        Query storeQuery = Query.query(Criteria.where("reviews.id").is(reviewId));
+        Update storeUpdate = new Update()
+                .set("reviews.$.score", review.getScore())
+                .set("reviews.$.content", review.getContent())
+                .set("pictureUrl", review.getPictureUrl());
+
+        mongoTemplate.updateFirst(storeQuery, storeUpdate, StoreDocument.class);
+    }
+
 }
