@@ -24,7 +24,6 @@ public class ReviewResponseDTO {
     @Getter
     @Builder
     public static class ReviewUpdateResponseDTO{
-        UUID storeId;
         @JsonUnwrapped
         ReviewCommonResponseDTO.ReviewCommonCrudResponseDTO reviewCommonCrudResponseDTO;
         LocalDateTime updatedAt;

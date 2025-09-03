@@ -7,14 +7,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.util.UUID;
-
 @Getter
 @Builder
 public class ReviewCommonRequestDTO {
-    @NotNull
-    private UUID storeId;
-
     @NotNull
     @DecimalMin(value = "0.0")
     @DecimalMax(value = "5.0")
