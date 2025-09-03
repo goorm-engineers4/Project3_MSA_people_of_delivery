@@ -29,9 +29,9 @@ services:
     ports:
       - 5435:5432
     environment:
-    - POSTGRES_DB=store_db
-    - POSTGRES_USER=user
-    - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=store_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
 
   postgres-user:
     image: postgres:latest
@@ -66,6 +66,18 @@ services:
       - 5438:5432
     environment:
       - POSTGRES_DB=auth_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  postgres-payment:
+    image: postgres:latest
+    container_name: payment-postgres
+    depends_on:
+      - postgres-common
+    ports:
+      - 5439:5432
+    environment:
+      - POSTGRES_DB=payment_db
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
 
