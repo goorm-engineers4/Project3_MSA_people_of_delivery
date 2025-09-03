@@ -35,7 +35,7 @@ public class ReviewController {
     private final ReviewQueryService reviewQueryService;
 
     @PostMapping("")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "리뷰 생성", description = "리뷰를 생성합니다. 리뷰 생성에 사용되는 API입니다.")
     public CustomResponse<ReviewResponseDTO.ReviewCreateResponseDTO> createReview(
             @Valid @RequestBody ReviewRequestDTO.ReviewCreateRequestDTO reviewCreateRequestDTO,
@@ -46,7 +46,7 @@ public class ReviewController {
     }
 
     @PatchMapping("/{reviewId}")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "리뷰 수정", description = "리뷰를 수정합니다. 리뷰 수정에 사용되는 API입니다.")
     public CustomResponse<ReviewResponseDTO.ReviewUpdateResponseDTO> updateReview(
             @Valid @RequestBody ReviewRequestDTO.ReviewUpdateRequestDTO reviewUpdateRequestDTO,
@@ -58,7 +58,7 @@ public class ReviewController {
     }
 
     @PatchMapping("/{reviewId}/canceled")
-    @PreAuthorize("(hasRole('ROLE_USER') and authentication.principal.id == #user.id()) or hasRole('ROLE_MASTER')")
+    @PreAuthorize("(hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()) or hasRole('ROLE_MASTER')")
     @Operation(summary = "리뷰 삭제", description = "리뷰를 삭제합니다. 리뷰 삭제에 사용되는 API입니다.")
     public CustomResponse<String> deleteReview(
             @PathVariable("reviewId") UUID reviewId,
@@ -80,7 +80,7 @@ public class ReviewController {
     }
 
     @GetMapping("")
-    @PreAuthorize("(hasRole('ROLE_USER') and authentication.principal.id == #user.id())")
+    @PreAuthorize("(hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id())")
     @Operation(summary = "유저 리뷰 조회", description = "사용자가 작성한 리뷰를 조회합니다. 사용자 리뷰 조회에 사용되는 API입니다.")
     @Parameter(name = "cursor", description = "데이터가 시작하는 부분을 표시합니다")
     @Parameter(name = "size", description = "size만큼 데이터를 가져옵니다.")

@@ -33,7 +33,7 @@ public class PaymentController {
 
     @PostMapping("/confirm")
     @Operation(summary = "결제 승인", description = "프론트엔드에서 받은 결제 정보를 승인합니다.")
-    @PreAuthorize("hasRole('USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     public CustomResponse<PaymentResponseDTO.PaymentConfirmResponseDTO> confirmPayment(
             @Valid @RequestBody PaymentRequestDTO.PaymentConfirmRequestDTO request,
             @AuthenticationPrincipal CurrentUser user
@@ -52,6 +52,7 @@ public class PaymentController {
     }
 
     @PatchMapping("/{orderId}/cancel")
+    @PreAuthorize("hasRole('ROLE_MASTER') and authentication.principal.id == #user.id()")
     @Operation(summary = "결제 취소", description = "결제를 취소합니다.")
     public CustomResponse<PaymentResponseDTO.PaymentCancelResponseDTO> cancelPayment(
             @Valid @RequestBody PaymentRequestDTO.PaymentCancelRequestDTO request,
@@ -65,7 +66,7 @@ public class PaymentController {
 
     @GetMapping("/{orderId}")
     @Operation(summary = "결제 상세 조회", description = "결제 상세 정보를 조회합니다.")
-    @PreAuthorize("hasRole('USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     public CustomResponse<PaymentResponseDTO.PaymentDetailResponseDTO> getPayment(
             @PathVariable("orderId") UUID orderId,
             @AuthenticationPrincipal CurrentUser user
@@ -77,7 +78,7 @@ public class PaymentController {
 
     @GetMapping("/me")
     @Operation(summary = "내 결제 이력", description = "내 결제 이력을 조회합니다.")
-    @PreAuthorize("hasRole('USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     public CustomResponse<PaymentResponseDTO.PaymentUserListResponseDTO> getUserPayments(
             @AuthenticationPrincipal CurrentUser user
     ){

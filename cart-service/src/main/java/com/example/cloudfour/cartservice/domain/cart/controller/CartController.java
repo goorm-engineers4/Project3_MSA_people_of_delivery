@@ -32,7 +32,7 @@ public class CartController {
     private final CartQueryService cartQueryService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "장바구니 생성", description = "장바구니를 생성합니다. 장바구니 생성에 사용되는 API입니다.")
     public CustomResponse<CartResponseDTO.CartCreateResponseDTO> createCart(
             @Valid @RequestBody CartRequestDTO.CartCreateRequestDTO cartCreateRequestDTO,
@@ -43,7 +43,7 @@ public class CartController {
     }
 
     @GetMapping("/{cartId}")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "장바구니 조회", description = "장바구니를 조회합니다. 장바구니 조회에 사용되는 API입니다.")
     public CustomResponse<CartResponseDTO.CartDetailResponseDTO> getCart(
             @PathVariable("cartId") UUID cartId,
@@ -54,7 +54,7 @@ public class CartController {
     }
 
     @DeleteMapping("/{cartId}")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "장바구니 삭제", description = "장바구니를 삭제합니다. 장바구니 삭제에 사용되는 API입니다.")
     public CustomResponse<String> deleteCart(
             @PathVariable("cartId") UUID cartId,
