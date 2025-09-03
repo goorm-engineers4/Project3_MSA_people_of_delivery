@@ -92,4 +92,68 @@ public class MenuCommandRepositoryImpl implements MenuCommandRepository{
             }
         }
     }
+    
+    @Override
+    public void updateMenuByMenuId(UUID menuId, Menu menu) {
+        Query query = Query.query(Criteria.where("menus.id").is(menuId));
+        
+        Update update = new Update()
+                .set("menus.$.name", menu.getName())
+                .set("menus.$.content", menu.getContent())
+                .set("menus.$.price", menu.getPrice())
+                .set("menus.$.menuPicture", menu.getMenuPicture())
+                .set("menus.$.menuStatus", menu.getStatus());
+        
+        mongoTemplate.updateFirst(query, update, StoreDocument.class);
+    }
+
+    @Override
+    public void updateMenuOptionByMenuOptionId(UUID menuOptionId, MenuOption menuOption) {
+        Query findQuery = Query.query(Criteria.where("menus.menuOptions.id").is(menuOptionId));
+        List<StoreDocument> storeDocuments = mongoTemplate.find(findQuery, StoreDocument.class);
+
+        if (storeDocuments.isEmpty()) {
+            return;
+        }
+
+        for (StoreDocument storeDocument : storeDocuments) {
+            boolean documentUpdated = false;
+            List<StoreDocument.Menu> menus = storeDocument.getMenus();
+
+            if (menus != null) {
+                for (int menuIndex = 0; menuIndex < menus.size(); menuIndex++) {
+                    StoreDocument.Menu menu = menus.get(menuIndex);
+                    List<StoreDocument.MenuOption> menuOptions = menu.getMenuOptions();
+
+                    if (menuOptions != null) {
+                        for (int optionIndex = 0; optionIndex < menuOptions.size(); optionIndex++) {
+                            StoreDocument.MenuOption existingOption = menuOptions.get(optionIndex);
+
+                            if (existingOption.getId().equals(menuOptionId)) {
+                                StoreDocument.MenuOption updatedOption = StoreDocument.MenuOption.builder()
+                                        .id(existingOption.getId())
+                                        .optionName(menuOption.getOptionName())
+                                        .additionalPrice(menuOption.getAdditionalPrice())
+                                        .build();
+
+                                menuOptions.set(optionIndex, updatedOption);
+                                documentUpdated = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (documentUpdated) break;
+                }
+            }
+
+            if (documentUpdated) {
+                Query updateQuery = Query.query(Criteria.where("_id").is(storeDocument.getId()));
+                Update update = Update.update("menus", menus);
+
+                UpdateResult result = mongoTemplate.updateFirst(updateQuery, update, StoreDocument.class);
+            }
+        }
+
+    }
 }
