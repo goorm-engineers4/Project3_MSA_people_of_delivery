@@ -17,6 +17,7 @@ import com.example.cloudfour.modulecommon.dto.CurrentUser;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -58,6 +59,7 @@ public class CartCommandService {
         );
     }
 
+    @CacheEvict(value = {"stores", "menus", "menuOptions"}, allEntries = true)
     public void deleteCart(UUID cartId, CurrentUser user) {
         validateUser(user);
         
