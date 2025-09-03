@@ -21,7 +21,6 @@ public class UserClient {
 
     private static final String BASE = "http://user-service/internal/users";
 
-    @Cacheable(value = "userAddresses", key = "#userId")
     @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public UserAddressResponseDTO addressById(UUID userId) {
         if (userId == null) {
