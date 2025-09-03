@@ -65,7 +65,7 @@ public class UserController {
     }
 
     @PostMapping("/addresses")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "내 주소 등록", description = "내 주소를 등록합니다.")
     public CustomResponse<UserResponseDTO.AddressResponseDTO> addAddress(@Valid @RequestBody UserRequestDTO.AddressRequestDTO request,
                                                                          @AuthenticationPrincipal CurrentUser user) {
@@ -74,7 +74,7 @@ public class UserController {
     }
 
     @GetMapping("/addresses")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "내 주소 조회", description = "내 주소를 조회합니다.")
     public CustomResponse<List<UserResponseDTO.AddressResponseDTO>> getAddressList(
             @AuthenticationPrincipal CurrentUser user) {
@@ -83,7 +83,7 @@ public class UserController {
     }
 
     @PatchMapping("/addresses/{addressId}")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "내 주소 수정", description = "내 주소를 수정합니다.")
     public CustomResponse<UserResponseDTO.AddressResponseDTO> updateAddress(@PathVariable UUID addressId,
                                               @Valid @RequestBody UserRequestDTO.AddressRequestDTO request,
@@ -93,7 +93,7 @@ public class UserController {
     }
 
     @PatchMapping("/addresses/delete/{addressId}")
-    @PreAuthorize("hasRole('ROLE_USER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
     @Operation(summary = "내 주소 삭제", description = "내 주소를 삭제합니다.")
     public CustomResponse<Void> deleteAddress(@PathVariable UUID addressId,
                                               @AuthenticationPrincipal CurrentUser user) {
