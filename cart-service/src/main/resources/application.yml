@@ -13,6 +13,11 @@ spring:
         format_sql: true
         highlight_sql: true
 
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000
+
     eureka:
       instance:
         prefer-ip-address: true
@@ -27,6 +32,19 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${LOCAL_DB_USERNAME}
     password: ${LOCAL_DB_PASSWORD}
+  
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
   cloud:
     config:
       enabled: false
@@ -60,6 +78,11 @@ kafka:
   topic:
     order-events: order-events
     payment-events: payment-events
+
+logging:
+  level:
+    org.springframework.cache: DEBUG
+    com.example.cloudfour.cartservice.client: DEBUG
 
 
 
