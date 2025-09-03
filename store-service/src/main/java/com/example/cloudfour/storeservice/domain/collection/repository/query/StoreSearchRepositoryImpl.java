@@ -1,6 +1,7 @@
 package com.example.cloudfour.storeservice.domain.collection.repository.query;
 
 import com.example.cloudfour.storeservice.domain.collection.document.StoreDocument;
+import com.example.cloudfour.storeservice.domain.menu.enums.MenuStatus;
 import com.querydsl.core.BooleanBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Pageable;
@@ -35,10 +36,48 @@ public class StoreSearchRepositoryImpl extends QuerydslRepositorySupport impleme
 
     @Override
     public Optional<StoreDocument> findStoreByStoreId(UUID storeId) {
-
-        return Optional.ofNullable(from(storeDocument)
+        StoreDocument store = from(storeDocument)
                 .where(storeDocument.storeId.eq(storeId))
-                .fetchOne());
+                .fetchOne();
+
+        if (store == null) {
+            return Optional.empty();
+        }
+
+        if (store.getMenus() != null) {
+            List<StoreDocument.Menu> visibleMenus = store.getMenus().stream()
+                    .filter(menu -> menu.getMenuStatus() != MenuStatus.숨김)
+                    .collect(Collectors.toList());
+
+            // 3. 필터링된 메뉴로 새로운 StoreDocument 생성
+            StoreDocument filteredStore = StoreDocument.builder()
+                    .id(store.getId())
+                    .storeId(store.getStoreId())
+                    .userId(store.getUserId())
+                    .name(store.getName())
+                    .address(store.getAddress())
+                    .phone(store.getPhone())
+                    .content(store.getContent())
+                    .minPrice(store.getMinPrice())
+                    .deliveryTip(store.getDeliveryTip())
+                    .rating(store.getRating())
+                    .likeCount(store.getLikeCount())
+                    .reviewCount(store.getReviewCount())
+                    .OperationHours(store.getOperationHours())
+                    .closedDays(store.getClosedDays())
+                    .siDo(store.getSiDo())
+                    .siGunGu(store.getSiGunGu())
+                    .eupMyeonDong(store.getEupMyeonDong())
+                    .pictureURL(store.getPictureURL())
+                    .createdAt(store.getCreatedAt())
+                    .storeCategory(store.getStoreCategory())
+                    .menus(visibleMenus)
+                    .reviews(store.getReviews())
+                    .build();
+
+            return Optional.of(filteredStore);
+        }
+        return Optional.of(store);
     }
 
     @Override
@@ -115,7 +154,9 @@ public class StoreSearchRepositoryImpl extends QuerydslRepositorySupport impleme
             return Collections.emptyList();
         }
 
-        return storeDocument.getMenus();
+        return storeDocument.getMenus().stream()
+                .filter(menu -> menu.getMenuStatus() != MenuStatus.숨김)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -130,18 +171,21 @@ public class StoreSearchRepositoryImpl extends QuerydslRepositorySupport impleme
 
         StoreDocument result = mongoTemplate.findOne(mongoQuery,StoreDocument.class);
 
-        if(result!=null && result.getMenus() != null){
+        if (result != null && result.getMenus() != null) {
             return result.getMenus().stream()
                     .filter(menu -> menu.getMenuCategory().getId().equals(categoryId))
+                    .filter(menu -> menu.getMenuStatus() != MenuStatus.숨김)
                     .collect(Collectors.toList());
         }
+
 
         return Collections.emptyList();
     }
 
     @Override
     public Optional<StoreDocument.Menu> findMenuByMenuId(UUID menuId) {
-        Criteria criteria = Criteria.where("menus.id").is(menuId);
+        Criteria criteria = Criteria.where("menus.id").is(menuId)
+                .and("menus.menuStatus").ne(MenuStatus.숨김.name());
         Query mongoQuery = new Query(criteria);
         mongoQuery.fields().include("menus.$");
 
