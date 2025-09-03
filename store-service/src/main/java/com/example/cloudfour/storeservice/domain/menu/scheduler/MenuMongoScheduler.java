@@ -32,8 +32,20 @@ public class MenuMongoScheduler {
     private final StockRepository stockRepository;
     private final StockCommandRepository stockCommandRepository;
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void createMenu(){
+    @Scheduled(cron = "0 * * * * *")
+    public void syncMenuScheduler(){
+        log.info("Menu Mongo 동기화 시작");
+        deleteMenu();
+        deleteMenuOption();
+        createMenu();
+        createMenuOption();
+        updateMenu();
+        updateMenuOption();
+        refreshQuantity();
+        log.info("Menu Mongo 동기화 완료");
+    }
+
+    private void createMenu(){
         log.info("MongoDB에 메뉴 동기화 시작");
         List<Menu> unsyncedMenus = menuRepository.findAllBySyncStatus(SyncStatus.CREATED_PENDING);
         if (unsyncedMenus.isEmpty()) {
@@ -50,8 +62,40 @@ public class MenuMongoScheduler {
         log.info("MongoDB에 메뉴 동기화 완료");
     }
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void createMenuOption(){
+    private void updateMenu() {
+        log.info("MongoDB에 메뉴 업데이트 동기화 시작");
+        List<Menu> menus = menuRepository.findAllBySyncStatus(SyncStatus.UPDATED_PENDING);
+        if (menus.isEmpty()) {
+            log.info("MongoDB에 업데이트할 메뉴가 존재하지 않음");
+            return;
+        }
+
+        for (Menu menu : menus) {
+            menuCommandRepository.updateMenuByMenuId(menu.getId(), menu);
+            menu.syncUpdated();
+        }
+        menuRepository.saveAll(menus);
+        log.info("MongoDB에 메뉴 업데이트 완료: {} 건", menus.size());
+    }
+
+    private void updateMenuOption() {
+        log.info("MongoDB에 메뉴 옵션 업데이트 동기화 시작");
+        List<MenuOption> menuOptions = menuOptionRepository.findAllBySyncStatus(SyncStatus.UPDATED_PENDING);
+        if (menuOptions.isEmpty()) {
+            log.info("MongoDB에 업데이트할 메뉴 옵션이 존재하지 않음");
+            return;
+        }
+
+        for (MenuOption menuOption : menuOptions) {
+            menuCommandRepository.updateMenuOptionByMenuOptionId(menuOption.getId(), menuOption);
+            menuOption.syncUpdated();
+        }
+        menuOptionRepository.saveAll(menuOptions);
+        log.info("MongoDB에 메뉴 옵션 업데이트 완료: {} 건", menuOptions.size());
+    }
+
+
+    private void createMenuOption(){
         log.info("MongoDB에 메뉴옵션 동기화 시작");
         List<MenuOption> unsyncedMenuOptions = menuOptionRepository.findAllBySyncStatus(SyncStatus.CREATED_PENDING);
         if(unsyncedMenuOptions.isEmpty()){
@@ -68,8 +112,7 @@ public class MenuMongoScheduler {
         log.info("MongoDB에 메뉴 옵션 동기화 완료");
     }
 
-    @Scheduled(cron = "0 * * * * *")
-    public void deleteMenu(){
+    private void deleteMenu(){
         log.info("MongoDB에 메뉴 삭제 동기화 시작");
         List<Menu> menus = menuRepository.findAllByIsDeleted();
         if(menus.isEmpty()){
@@ -81,8 +124,7 @@ public class MenuMongoScheduler {
         log.info("MongoDB에 메뉴 삭제 완료");
     }
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void deleteMenuOption(){
+    private void deleteMenuOption(){
         log.info("MongoDB에 메뉴 옵션 삭제 동기화 시작");
         List<MenuOption> menuOptions = menuOptionRepository.findAllByIsDeleted();
         if(menuOptions.isEmpty()){
@@ -94,12 +136,11 @@ public class MenuMongoScheduler {
         log.info("MongoDB에 메뉴 옵션 삭제 완료");
     }
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void refreshQuantity(){
+    private void refreshQuantity(){
         log.info("MongoDB에 수량 최신화 시작");
         List<Stock> pendingStocks = stockRepository.findAllBySyncStatus(SyncStatus.UPDATED_PENDING);
         if(pendingStocks.isEmpty()){
-            log.info("MongoDB에 최신화할 수량아 존재하지 않음");
+            log.info("MongoDB에 최신화할 수량이 존재하지 않음");
         }
 
         for(Stock stock: pendingStocks){
