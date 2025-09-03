@@ -125,6 +125,7 @@ public class Store extends BaseEntity {
     public void update(String name, String address) {
         if (name != null) this.name = name;
         if (address != null) this.address = address;
+        this.syncStatus = SyncStatus.UPDATED_PENDING;
     }
 
     public void createReview(Float score){
@@ -138,8 +139,6 @@ public class Store extends BaseEntity {
         }
 
         this.rating = Math.round(this.rating * 100.0f) / 100.0f;
-
-        this.syncStatus = SyncStatus.UPDATED_PENDING;
     }
 
     public void deleteReview(Float score){
@@ -154,8 +153,6 @@ public class Store extends BaseEntity {
 
                 this.rating = Math.round(this.rating * 100.0f) / 100.0f;
             }
-
-            this.syncStatus = SyncStatus.UPDATED_PENDING;
         }
     }
 
