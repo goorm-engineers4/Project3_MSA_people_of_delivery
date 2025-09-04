@@ -49,7 +49,6 @@ public class StoreSearchRepositoryImpl extends QuerydslRepositorySupport impleme
                     .filter(menu -> menu.getMenuStatus() != MenuStatus.숨김)
                     .collect(Collectors.toList());
 
-            // 3. 필터링된 메뉴로 새로운 StoreDocument 생성
             StoreDocument filteredStore = StoreDocument.builder()
                     .id(store.getId())
                     .storeId(store.getStoreId())
@@ -202,7 +201,7 @@ public class StoreSearchRepositoryImpl extends QuerydslRepositorySupport impleme
     public List<StoreDocument.MenuOption> findMenuOptionByMenuIdOrderByAdditionalPrice(UUID menuId) {
         Criteria criteria = Criteria.where("menus.id").is(menuId);
         Query mongoQuery = new Query(criteria);
-        mongoQuery.fields().include("menus.$"); // 해당 메뉴만 포함
+        mongoQuery.fields().include("menus.$");
 
         StoreDocument result = mongoTemplate.findOne(mongoQuery, StoreDocument.class);
 
@@ -222,7 +221,7 @@ public class StoreSearchRepositoryImpl extends QuerydslRepositorySupport impleme
     public Optional<StoreDocument.MenuOption> findMenuOptionByMenuOptionId(UUID menuOptionId) {
         Criteria criteria = Criteria.where("menus.menuOptions.id").is(menuOptionId);
         Query mongoQuery = new Query(criteria);
-        mongoQuery.fields().include("menus"); // 전체 메뉴 배열 포함
+        mongoQuery.fields().include("menus");
 
         StoreDocument result = mongoTemplate.findOne(mongoQuery, StoreDocument.class);
 
