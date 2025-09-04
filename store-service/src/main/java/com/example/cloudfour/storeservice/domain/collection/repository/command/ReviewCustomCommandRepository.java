@@ -9,4 +9,5 @@ public interface ReviewCustomCommandRepository {
     public void createReviewByStoreId(UUID storeId, List<Review> reviews);
     public void deleteAllByReviewIdIn(List<UUID> reviewIds);
     public void updateStoreReview(UUID storeId, Integer reviewCount, Float rating);
+    public void updateReviewByReviewId(UUID reviewId, Review review);
 }

@@ -30,8 +30,17 @@ public class ReviewMongoScheduler {
     private final ReviewCommandRepository reviewCommandRepository;
     private final StoreRepository storeRepository;
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void createReview(){
+    @Scheduled(cron = "0 * * * * *")
+    public void syncReviewScheduler(){
+        log.info("Review Mongo 동기화 시작");
+        deleteReview();
+        createReview();
+        updateReview();
+        refreshReviews();
+        log.info("Review Mongo 동기화 완료");
+    }
+
+    private void createReview(){
         log.info("MongoDB에 리뷰 동기화 시작");
         List<Review> reviews = reviewRepository.findAllBySyncStatus(SyncStatus.CREATED_PENDING);
         if(reviews.isEmpty()){
@@ -45,8 +54,24 @@ public class ReviewMongoScheduler {
         log.info("MongoDB에 리뷰 동기화 완료");
     }
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void deleteReview(){
+    private void updateReview() {
+        log.info("MongoDB에 리뷰 업데이트 동기화 시작");
+        List<Review> reviews = reviewRepository.findAllBySyncStatus(SyncStatus.UPDATED_PENDING);
+        if (reviews.isEmpty()) {
+            log.info("MongoDB에 업데이트할 리뷰가 존재하지 않음");
+            return;
+        }
+
+        for (Review review : reviews) {
+            reviewCommandRepository.updateReviewByReviewId(review.getId(), review);
+            review.syncUpdated();
+        }
+        reviewRepository.saveAll(reviews);
+        log.info("MongoDB에 리뷰 업데이트 완료: {} 건", reviews.size());
+    }
+
+
+    private void deleteReview(){
         log.info("MongoDB에 리뷰 삭제 동기화 시작");
         List<Review> reviews = reviewRepository.findAllByIsDeleted();
         if(reviews.isEmpty()){
@@ -58,8 +83,7 @@ public class ReviewMongoScheduler {
         log.info("MongoDB에 리뷰 삭제 완료");
     }
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void refreshReviews(){
+    private void refreshReviews(){
         log.info("MongoDB에 리뷰 최신화 시작");
         Pageable pageable = PageRequest.of(0,3);
         List<Store> stores = storeRepository.findAllByIsDeletedIsFalse();

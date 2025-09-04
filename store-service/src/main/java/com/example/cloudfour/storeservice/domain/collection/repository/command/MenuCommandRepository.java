@@ -12,4 +12,6 @@ public interface MenuCommandRepository {
     public void deleteAllByMenuOptionIdIn(List<UUID> menuOptionIds);
     public void createMenuByStoreId(List<UUID> storeIds, Map<UUID, List<Menu>> menusByStoreId);
     public void createMenuOptionByMenuId(List<UUID> menuIds, Map<UUID, List<MenuOption>> menuOptionsByMenuId);
+    public void updateMenuByMenuId(UUID menuId, Menu menu);
+    public void updateMenuOptionByMenuOptionId(UUID menuOptionId, MenuOption menuOption);
 }

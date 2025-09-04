@@ -113,5 +113,6 @@ public class Menu extends BaseEntity {
         if (price != null) this.price = price;
         if (menuPicture != null) this.menuPicture = menuPicture;
         if (status != null) this.status = status;
+        this.syncStatus = SyncStatus.UPDATED_PENDING;
     }
 }

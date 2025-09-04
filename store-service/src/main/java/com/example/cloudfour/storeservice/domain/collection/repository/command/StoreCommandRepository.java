@@ -6,6 +6,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 import java.util.UUID;
 
-public interface StoreCommandRepository extends MongoRepository<StoreDocument, UUID> {
+public interface StoreCommandRepository extends MongoRepository<StoreDocument, UUID>, StoreCustomCommandRepository{
     void deleteAllByStoreIdIn(List<UUID> ids);
 }

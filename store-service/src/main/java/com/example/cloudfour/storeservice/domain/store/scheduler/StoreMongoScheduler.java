@@ -24,8 +24,16 @@ public class StoreMongoScheduler {
     private final StoreRepository storeRepository;
     private final StoreCommandRepository storeCommandRepository;
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void createStore(){
+    @Scheduled(cron = "0 * * * * *")
+    public void syncStoreScheduler(){
+        log.info("Review Mongo 동기화 시작");
+        deleteStore();
+        createStore();
+        updateStore();
+        log.info("Review Mongo 동기화 완료");
+    }
+
+    private void createStore(){
         log.info("MongoDB에 가게 동기화 시작");
         List<Store> stores = storeRepository.findAllBySyncStatus(SyncStatus.CREATED_PENDING);
         if(stores.isEmpty()){
@@ -39,8 +47,23 @@ public class StoreMongoScheduler {
         log.info("MongoDB에 가게 동기화 완료");
     }
 
-    @Scheduled(cron = "0 0 4 * * *")
-    public void deleteStore(){
+    private void updateStore() {
+        log.info("MongoDB에 가게 업데이트 동기화 시작");
+        List<Store> stores = storeRepository.findAllBySyncStatus(SyncStatus.UPDATED_PENDING);
+        if (stores.isEmpty()) {
+            log.info("MongoDB에 업데이트할 가게가 존재하지 않음");
+            return;
+        }
+
+        for (Store store : stores) {
+            storeCommandRepository.updateStoreByStoreId(store.getId(), store);
+            store.syncUpdated();
+        }
+        storeRepository.saveAll(stores);
+        log.info("MongoDB에 가게 업데이트 완료: {} 건", stores.size());
+    }
+
+    private void deleteStore(){
         log.info("MongoDB에 가게 삭제 동기화 시작");
         List<Store> stores = storeRepository.findAllByIsDeleted();
         if(stores.isEmpty()){

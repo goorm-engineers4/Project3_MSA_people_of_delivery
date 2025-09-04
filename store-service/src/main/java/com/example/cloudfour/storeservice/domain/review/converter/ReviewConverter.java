@@ -74,7 +74,6 @@ public class ReviewConverter {
 
     public static ReviewResponseDTO.ReviewUpdateResponseDTO toReviewUpdateResponseDTO(Review review){
         return ReviewResponseDTO.ReviewUpdateResponseDTO.builder()
-                .storeId(review.getStore().getId())
                 .reviewCommonCrudResponseDTO(toReviewCommonCrudResponseDTO(review))
                 .updatedAt(review.getUpdatedAt())
                 .updatedBy(review.getUser())

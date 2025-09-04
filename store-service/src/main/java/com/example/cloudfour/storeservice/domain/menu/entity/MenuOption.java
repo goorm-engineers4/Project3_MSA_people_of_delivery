@@ -70,6 +70,7 @@ public class MenuOption {
     public void updateOptionInfo(String optionName, Integer additionalPrice) {
         if (optionName != null) this.optionName = optionName;
         if (additionalPrice != null) this.additionalPrice = additionalPrice;
+        this.syncStatus = SyncStatus.UPDATED_PENDING;
     }
 
     public void softDelete() {

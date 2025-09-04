@@ -88,10 +88,11 @@ public class Review extends BaseEntity {
         this.syncStatus = SyncStatus.CREATED_PENDING;
     }
 
-    public void update(ReviewRequestDTO.ReviewUpdateRequestDTO reviewUpdateRequestDTO){
-        this.score = reviewUpdateRequestDTO.getReviewCommonRequestDTO().getScore();
-        this.content = reviewUpdateRequestDTO.getReviewCommonRequestDTO().getContent();
-        this.pictureUrl = reviewUpdateRequestDTO.getReviewCommonRequestDTO().getPictureUrl();
+    public void update(Float score, String content, String pictureUrl){
+        if(score!=null) this.score = score;
+        if(content!=null) this.content = content;
+        if(pictureUrl!=null) this.pictureUrl = pictureUrl;
+        this.syncStatus = SyncStatus.UPDATED_PENDING;
     }
 
     public void softDelete() {

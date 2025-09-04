@@ -1,7 +1,6 @@
 package com.example.cloudfour.storeservice.domain.review.service.command;
 
 import com.example.cloudfour.modulecommon.dto.CurrentUser;
-import com.example.cloudfour.storeservice.domain.collection.repository.command.ReviewCommandRepository;
 import com.example.cloudfour.storeservice.domain.review.converter.ReviewConverter;
 import com.example.cloudfour.storeservice.domain.review.dto.ReviewRequestDTO;
 import com.example.cloudfour.storeservice.domain.review.dto.ReviewResponseDTO;
@@ -27,7 +26,6 @@ import java.util.UUID;
 public class ReviewCommandService {
     private final StoreRepository storeRepository;
     private final ReviewRepository reviewRepository;
-    private final ReviewCommandRepository reviewCommandRepository;
 
     public ReviewResponseDTO.ReviewCreateResponseDTO createReview(ReviewRequestDTO.ReviewCreateRequestDTO reviewCreateRequestDTO,
           CurrentUser user) {
@@ -36,7 +34,7 @@ public class ReviewCommandService {
             throw new ReviewException(ReviewErrorCode.UNAUTHORIZED_ACCESS);
         }
         log.info("리뷰 생성 권한 확인 성공");
-        Store findStore = storeRepository.findById(reviewCreateRequestDTO.getReviewCommonRequestDTO().getStoreId())
+        Store findStore = storeRepository.findById(reviewCreateRequestDTO.getStoreId())
                 .orElseThrow(()->{
                     log.warn("존재하지 않는 가게");
             return new StoreException(StoreErrorCode.NOT_FOUND);
@@ -65,11 +63,6 @@ public class ReviewCommandService {
 
     public ReviewResponseDTO.ReviewUpdateResponseDTO updateReview(ReviewRequestDTO.ReviewUpdateRequestDTO reviewUpdateRequestDTO,
               UUID reviewId, CurrentUser user) {
-        Store findStore = storeRepository.findById(reviewUpdateRequestDTO.getReviewCommonRequestDTO().getStoreId()).
-                orElseThrow(()->{
-                    log.warn("존재하지 않는 가게");
-                    return new StoreException(StoreErrorCode.NOT_FOUND);
-                });
         Review findReview = reviewRepository.findById(reviewId).orElseThrow(()->{
                 log.warn("존재하지 않는 리뷰");
                 return new ReviewException(ReviewErrorCode.NOT_FOUND);
@@ -79,8 +72,9 @@ public class ReviewCommandService {
             throw new ReviewException(ReviewErrorCode.UNAUTHORIZED_ACCESS);
         }
         log.info("리뷰 수정 권한 확인 성공");
-        findReview.update(reviewUpdateRequestDTO);
-        findReview.setStore(findStore);
+        findReview.update(reviewUpdateRequestDTO.getReviewCommonRequestDTO().getScore(),
+                reviewUpdateRequestDTO.getReviewCommonRequestDTO().getContent(),
+                reviewUpdateRequestDTO.getReviewCommonRequestDTO().getPictureUrl());
         log.info("리뷰 수정 성공");
         return ReviewConverter.toReviewUpdateResponseDTO(findReview);
     }
