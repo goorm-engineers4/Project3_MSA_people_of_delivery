@@ -96,5 +96,10 @@ public class StoreDocument {
     public static class Stock{
         private UUID id;
         private Long quantity;
+
+        public void updateStock(UUID id, Long quantity){
+            this.id = id;
+            this.quantity = quantity;
+        }
     }
 }
