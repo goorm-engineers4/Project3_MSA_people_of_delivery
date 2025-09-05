@@ -11,6 +11,7 @@ public class MenuCommonResponseDTO {
     private UUID menuId;
     private String name;
     private Integer price;
+    private Long quantity;
     private String menuPicture;
     private MenuStatus status;
     private String category;
