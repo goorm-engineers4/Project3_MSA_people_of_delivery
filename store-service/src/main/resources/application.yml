@@ -37,6 +37,9 @@ spring:
   data:
     mongodb:
       uri: ${MONGO_URI}
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
   datasource:
     url: ${LOCAL_DB_URL}
     driver-class-name: org.postgresql.Driver

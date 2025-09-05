@@ -10,5 +10,4 @@ public class StockResponseDTO {
     private UUID stockId;
     private UUID menuId;
     private Long quantity;
-    private Long version;
 }

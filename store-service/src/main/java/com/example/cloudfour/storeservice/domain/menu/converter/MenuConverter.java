@@ -104,6 +104,7 @@ public class MenuConverter {
                 .menuId(menu.getId())
                 .name(menu.getName())
                 .price(menu.getPrice())
+                .quantity(menu.getStock().getQuantity())
                 .menuPicture(menu.getMenuPicture())
                 .status(menu.getMenuStatus())
                 .category(menu.getMenuCategory().getMenuCategoryName())

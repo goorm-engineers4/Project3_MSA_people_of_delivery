@@ -9,6 +9,7 @@ import com.example.cloudfour.storeservice.domain.menu.converter.MenuConverter;
 import com.example.cloudfour.storeservice.domain.menu.converter.MenuOptionConverter;
 import com.example.cloudfour.storeservice.domain.menu.dto.MenuResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.dto.MenuOptionResponseDTO;
+import com.example.cloudfour.storeservice.domain.menu.dto.StockResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.entity.Menu;
 import com.example.cloudfour.storeservice.domain.menu.entity.MenuOption;
 import com.example.cloudfour.storeservice.domain.menu.exception.MenuCategoryErrorCode;
@@ -40,6 +41,7 @@ public class MenuQueryService {
     private final StoreSearchRepository storeMongoRepository;
     private final MenuRepository menuQuery;
     private final MenuOptionRepository menuOptionQuery;
+    private final StockQueryService stockQueryService;
 
     public MenuResponseDTO.MenuStoreListResponseDTO getMenusByStoreWithCursor(
             UUID storeId, CurrentUser user
@@ -62,10 +64,22 @@ public class MenuQueryService {
             throw new MenuException(MenuErrorCode.NOT_FOUND);
         }
 
+        for (StoreDocument.Menu menu : menus) {
+            UUID menuId = menu.getId();
+
+            StockResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
+
+            if (menu.getStock() != null) {
+                menu.getStock().updateStock(
+                        stockResponseDTO.getStockId(),
+                        stockResponseDTO.getQuantity()
+                );
+            }
+        }
+
         List<MenuResponseDTO.MenuListResponseDTO> menusDto = menus.stream()
                 .map(MenuConverter::toMenuListResponseDTO)
                 .toList();
-
         log.info("가게 별 메뉴 목록 조회 성공");
         return MenuResponseDTO.MenuStoreListResponseDTO.builder()
                 .menus(menusDto)
@@ -101,6 +115,19 @@ public class MenuQueryService {
             throw new MenuException(MenuErrorCode.NOT_FOUND);
         }
 
+        for (StoreDocument.Menu menu : menus) {
+            UUID menuId = menu.getId();
+
+            StockResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
+
+            if (menu.getStock() != null) {
+                menu.getStock().updateStock(
+                        stockResponseDTO.getStockId(),
+                        stockResponseDTO.getQuantity()
+                );
+            }
+        }
+
         List<MenuResponseDTO.MenuListResponseDTO> menusDto = menus.stream()
                 .map(MenuConverter::toMenuListResponseDTO)
                 .toList();
@@ -110,31 +137,6 @@ public class MenuQueryService {
                 .menus(menusDto)
                 .build();
     }
-
-//    public List<MenuResponseDTO.MenuTopResponseDTO> getTopMenus(UUID userId) {
-//        OrderItemResponseDTO orderItemResponseDTO = restTemplate.getForObject("http://order-service/api/order-items/{userId}", OrderItemResponseDTO.class, userId);
-//        return menuRepository.findTopMenusByOrderCount(PageRequest.of(0, 20))
-//                .stream()
-//                .map(MenuConverter::toMenuTopResponseDTO)
-//                .toList();
-//    }
-//
-//    public List<MenuResponseDTO.MenuTimeTopResponseDTO> getTimeTopMenus(UUID userId) {
-//        LocalDateTime startTime = LocalDateTime.now().minusHours(24);
-//        LocalDateTime endTime = LocalDateTime.now();
-//
-//        return menuRepository.findTopMenusByTimeRange(startTime, endTime, PageRequest.of(0, 20))
-//                .stream()
-//                .map(MenuConverter::toMenuTimeTopResponseDTO)
-//                .toList();
-//    }
-//
-//    public List<MenuResponseDTO.MenuRegionTopResponseDTO> getRegionTopMenus(String si, String gu, UUID userId) {
-//        return menuRepository.findTopMenusByRegion(si, gu, PageRequest.of(0, 20))
-//                .stream()
-//                .map(MenuConverter::toMenuRegionTopResponseDTO)
-//                .toList();
-//    }
 
     public MenuResponseDTO.MenuDetailResponseDTO getMenuDetail(UUID menuId,CurrentUser user) {
         if(user==null){
@@ -146,6 +148,8 @@ public class MenuQueryService {
                     log.warn("존재하지 않는 메뉴");
                     return new MenuException(MenuErrorCode.NOT_FOUND);
                 });
+        StockResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
+        storeDocument.getStock().updateStock(stockResponseDTO.getStockId(),stockResponseDTO.getQuantity());
         log.info("메뉴 상세 조회 권한 확인 성공");
         var optionDTOs = storeMongoRepository.findMenuOptionByMenuIdOrderByAdditionalPrice(menuId)
                 .stream()

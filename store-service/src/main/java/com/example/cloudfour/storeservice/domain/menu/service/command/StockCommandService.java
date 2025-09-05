@@ -4,6 +4,7 @@ import com.example.cloudfour.storeservice.domain.menu.entity.Stock;
 import com.example.cloudfour.storeservice.domain.menu.exception.StockErrorCode;
 import com.example.cloudfour.storeservice.domain.menu.exception.StockException;
 import com.example.cloudfour.storeservice.domain.menu.repository.StockRepository;
+import com.example.cloudfour.storeservice.domain.menu.service.StockRedisService;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,15 +27,21 @@ import java.util.UUID;
 )
 public class StockCommandService {
     private final StockRepository stockRepository;
+    private final StockRedisService stockRedisService;
 
     public void decreaseStock(UUID stockId, Long quantity){
         Stock stock = stockRepository.findByIdWithOptimisticLock(stockId).orElseThrow(()-> new StockException(StockErrorCode.NOT_FOUND));
         stock.decrease(quantity);
+        stockRedisService.updateStockInCache(stockId, stock.getQuantity());
+        log.info("재고 감소 - stockId: {}, quantity: {}, remaining: {}", stockId, quantity, stock.getQuantity());
     }
 
     public void increaseStock(UUID stockId, Long quantity){
         Stock stock = stockRepository.findByIdWithOptimisticLock(stockId).orElseThrow(()-> new StockException(StockErrorCode.NOT_FOUND));
         stock.increase(quantity);
+        stockRedisService.updateStockInCache(stockId, stock.getQuantity());
+        log.info("재고 증가 - stockId: {}, quantity: {}, total: {}", stockId, quantity, stock.getQuantity());
+
     }
 
     @Recover
