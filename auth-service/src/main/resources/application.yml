@@ -67,7 +67,7 @@ spring:
       write-dates-as-timestamps: false
 
 jwt:
-  issuer: http://localhost:8015
+  issuer: http://auth-service
   audience: app
   access-exp-seconds: 900
   refresh-exp-seconds: 1209600
