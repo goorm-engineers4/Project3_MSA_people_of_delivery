@@ -48,3 +48,6 @@ spring:
   cloud:
     config:
       enabled: false
+
+passport:
+  secret-key: ${PASSPORT_SECRET}

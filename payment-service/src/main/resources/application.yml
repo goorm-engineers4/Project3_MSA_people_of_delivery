@@ -39,6 +39,9 @@ spring:
     default-consumes-media-type: application/json
     default-produces-media-type: application/json
 
+passport:
+  secret-key: ${PASSPORT_SECRET}
+
 toss:
   secret-key: ${TOSS_SECRET}
   webhook-secret: ${TOSS_WEBHOOK_SECRET:webhook_secret_key}

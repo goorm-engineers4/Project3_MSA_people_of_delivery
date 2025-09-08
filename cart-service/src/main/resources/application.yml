@@ -49,6 +49,9 @@ spring:
     config:
       enabled: false
 
+passport:
+  secret-key: ${PASSPORT_SECRET}
+
   springdoc:
     api-docs:
       version: openapi_3_1

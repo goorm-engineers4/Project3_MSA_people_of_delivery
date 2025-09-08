@@ -1,6 +1,10 @@
 server:
   port: 8014
 
+logging:
+  level:
+    com.example.cloudfour.modulecommon.util.PassportUtil: DEBUG
+
 eureka:
   instance:
     prefer-ip-address: true
@@ -9,7 +13,7 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
     serviceUrl:
-      defaultZone: http://discovery:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
 
 spring:
   application:
@@ -60,3 +64,6 @@ spring:
     enable-spring-security: true
     default-consumes-media-type: application/json
     default-produces-media-type: application/json
+
+passport:
+  secret-key: ${PASSPORT_SECRET}

@@ -1,6 +1,6 @@
 package com.example.cloudfour.storeservice.domain.store.service.query;
 
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.storeservice.domain.collection.document.StoreDocument;
 import com.example.cloudfour.storeservice.domain.collection.repository.query.StoreSearchRepository;
 
@@ -38,13 +38,13 @@ public class StoreQueryService {
     private static final String BASE = "http://user-service/internal/regions";
 
     public StoreResponseDTO.StoreCursorListResponseDTO getAllStores(
-            LocalDateTime cursor, int size, String keyword, CurrentUser user
+            LocalDateTime cursor, int size, String keyword, Passport passport
     ) {
-        if(user==null){
+        if(passport==null){
             log.warn("가게 목록 조회 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }
-        RegionResponseDTO findRegion =  rt.getForObject(BASE+"/{userId}",RegionResponseDTO.class,user.id());
+        RegionResponseDTO findRegion =  rt.getForObject(BASE+"/{userId}",RegionResponseDTO.class,passport.getUserId());
         if(findRegion == null){
             log.warn("존재하지 않는 지역");
             throw new RegionException(RegionErrorCode.NOT_FOUND);
@@ -67,13 +67,13 @@ public class StoreQueryService {
 
     }
     public StoreResponseDTO.StoreCursorListResponseDTO getStoresByCategory(
-            UUID categoryId, LocalDateTime cursor, int size,CurrentUser user
+            UUID categoryId, LocalDateTime cursor, int size,Passport passport
     ) {
-        if(user==null){
+        if(passport==null){
             log.warn("카테고리 별 가게 목록 조회 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }
-        RegionResponseDTO findRegion =  rt.getForObject(BASE+"/{userId}",RegionResponseDTO.class,user.id());
+        RegionResponseDTO findRegion =  rt.getForObject(BASE+"/{userId}",RegionResponseDTO.class,passport.getUserId());
         if(findRegion == null){
             log.warn("존재하지 않는 지역");
             throw new RegionException(RegionErrorCode.NOT_FOUND);
@@ -95,8 +95,8 @@ public class StoreQueryService {
         return StoreResponseDTO.StoreCursorListResponseDTO.of(storeList, nextCursor);
     }
 
-    public StoreResponseDTO.StoreDetailResponseDTO getStoreById(UUID storeId,CurrentUser user) {
-        if(user==null){
+    public StoreResponseDTO.StoreDetailResponseDTO getStoreById(UUID storeId,Passport passport) {
+        if(passport==null){
             log.warn("가게 상세 조회 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }

@@ -1,7 +1,7 @@
 package com.example.cloudfour.storeservice.domain.menu.controller;
 
 import com.example.cloudfour.modulecommon.apiPayLoad.CustomResponse;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.storeservice.domain.menu.dto.MenuRequestDTO;
 import com.example.cloudfour.storeservice.domain.menu.dto.MenuResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.dto.MenuOptionResponseDTO;
@@ -36,14 +36,14 @@ public class MenuController {
     private final MenuQueryService menuQueryService;
 
     @PostMapping("/{storeId}")
-    @PreAuthorize("hasRole('ROLE_OWNER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     @Operation(summary = "메뉴 생성", description = "메뉴를 생성합니다.")
     public CustomResponse<MenuResponseDTO.MenuDetailResponseDTO> createMenu(
             @PathVariable("storeId") UUID storeId,
             @Valid @RequestBody MenuRequestDTO.MenuCreateRequestDTO requestDTO,
-            @AuthenticationPrincipal CurrentUser user) {
+            @AuthenticationPrincipal Passport passport) {
 
-        MenuResponseDTO.MenuDetailResponseDTO result = menuCommandService.createMenu(requestDTO, storeId, user);
+        MenuResponseDTO.MenuDetailResponseDTO result = menuCommandService.createMenu(requestDTO, storeId, passport);
         return CustomResponse.onSuccess(HttpStatus.CREATED, result);
     }
 
@@ -51,9 +51,9 @@ public class MenuController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "메뉴 상세 조회", description = "메뉴의 상세 정보를 조회합니다.")
     public CustomResponse<MenuResponseDTO.MenuDetailResponseDTO> getMenuDetail(
-            @PathVariable("menuId") UUID menuId,@AuthenticationPrincipal CurrentUser user) {
+            @PathVariable("menuId") UUID menuId,@AuthenticationPrincipal Passport passport) {
 
-        MenuResponseDTO.MenuDetailResponseDTO result = menuQueryService.getMenuDetail(menuId,user);
+        MenuResponseDTO.MenuDetailResponseDTO result = menuQueryService.getMenuDetail(menuId,passport);
         return CustomResponse.onSuccess(HttpStatus.OK, result);
     }
 
@@ -62,11 +62,11 @@ public class MenuController {
     @Operation(summary = "해당 가게 메뉴 목록 조회", description = "가게의 메뉴 목록을 조회합니다.")
     public CustomResponse<MenuResponseDTO.MenuStoreListResponseDTO> getMenusByStore(
             @PathVariable("storeId") UUID storeId,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
         ) {
 
         MenuResponseDTO.MenuStoreListResponseDTO result =
-                menuQueryService.getMenusByStoreWithCursor(storeId,user);
+                menuQueryService.getMenusByStoreWithCursor(storeId,passport);
         return CustomResponse.onSuccess(HttpStatus.OK, result);
     }
 
@@ -76,47 +76,47 @@ public class MenuController {
     public CustomResponse<MenuResponseDTO.MenuStoreListResponseDTO> getMenusByCategory(
             @PathVariable("storeId") UUID storeId,
             @RequestParam(name = "categoryId") UUID categoryId,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
             ) {
 
         MenuResponseDTO.MenuStoreListResponseDTO result =
-                menuQueryService.getMenusByStoreWithCategory(storeId, categoryId, user);
+                menuQueryService.getMenusByStoreWithCategory(storeId, categoryId, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, result);
     }
 
     @PatchMapping("/{menuId}")
-    @PreAuthorize("hasRole('ROLE_OWNER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     @Operation(summary = "메뉴 수정", description = "메뉴를 수정합니다.")
     public CustomResponse<MenuResponseDTO.MenuDetailResponseDTO> updateMenu(
             @Valid @RequestBody MenuRequestDTO.MenuUpdateRequestDTO requestDTO,
             @PathVariable("menuId") UUID menuId,
-            @AuthenticationPrincipal CurrentUser user) {
+            @AuthenticationPrincipal Passport passport) {
 
-        MenuResponseDTO.MenuDetailResponseDTO result = menuCommandService.updateMenu(menuId, requestDTO, user);
+        MenuResponseDTO.MenuDetailResponseDTO result = menuCommandService.updateMenu(menuId, requestDTO, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, result);
     }
 
     @DeleteMapping("/{menuId}/deleted")
-    @PreAuthorize("(hasRole('ROLE_OWNER') and authentication.principal.id == #user.id()) or hasRole('ROLE_MASTER')")
+    @PreAuthorize("hasRole('ROLE_OWNER') or hasRole('ROLE_MASTER')")
     @Operation(summary = "메뉴 삭제", description = "메뉴를 삭제합니다.")
     public CustomResponse<String> deleteMenu(
             @PathVariable("menuId") UUID menuId,
-            @AuthenticationPrincipal CurrentUser user) {
+            @AuthenticationPrincipal Passport passport) {
 
-        menuCommandService.deleteMenu(menuId, user);
+        menuCommandService.deleteMenu(menuId, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, "메뉴 삭제 완료");
     }
 
     @PostMapping("/{menuId}/options")
-    @PreAuthorize("hasRole('ROLE_OWNER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     @Operation(summary = "메뉴 옵션 생성", description = "특정 메뉴에 새로운 옵션을 추가합니다.")
     public CustomResponse<MenuOptionResponseDTO.MenuOptionSimpleResponseDTO> createMenuOption(
             @PathVariable("menuId") UUID menuId,
             @Valid @RequestBody MenuRequestDTO.MenuOptionCreateRequestDTO requestDTO,
-            @AuthenticationPrincipal CurrentUser user) {
+            @AuthenticationPrincipal Passport passport) {
 
         MenuOptionResponseDTO.MenuOptionSimpleResponseDTO result =
-                menuCommandService.createMenuOption(requestDTO, user, menuId);
+                menuCommandService.createMenuOption(requestDTO, passport, menuId);
         return CustomResponse.onSuccess(HttpStatus.CREATED, result);
     }
 
@@ -124,11 +124,11 @@ public class MenuController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "메뉴별 옵션 목록 조회", description = "특정 메뉴의 모든 옵션을 조회합니다.")
     public CustomResponse<MenuOptionResponseDTO.MenuOptionsByMenuResponseDTO> getMenuOptions(
-            @PathVariable("menuId") UUID menuId,@AuthenticationPrincipal CurrentUser user
+            @PathVariable("menuId") UUID menuId, @AuthenticationPrincipal Passport passport
             ) {
 
         MenuOptionResponseDTO.MenuOptionsByMenuResponseDTO result =
-                menuQueryService.getMenuOptionsByMenu(menuId,user);
+                menuQueryService.getMenuOptionsByMenu(menuId, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, result);
     }
 
@@ -136,35 +136,35 @@ public class MenuController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "메뉴 옵션 상세 조회", description = "메뉴 옵션의 상세 정보를 조회합니다.")
     public CustomResponse<MenuOptionResponseDTO.MenuOptionSimpleResponseDTO> getMenuOptionDetail(
-            @PathVariable("optionId") UUID optionId,@AuthenticationPrincipal CurrentUser user
+            @PathVariable("optionId") UUID optionId, @AuthenticationPrincipal Passport passport
             ) {
 
         MenuOptionResponseDTO.MenuOptionSimpleResponseDTO result =
-                menuQueryService.getMenuOptionDetail(optionId,user);
+                menuQueryService.getMenuOptionDetail(optionId, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, result);
     }
 
     @PatchMapping("/options/{optionId}")
-    @PreAuthorize("(hasRole('ROLE_OWNER') and authentication.principal.id == #user.id()) or hasRole('ROLE_MASTER')")
+    @PreAuthorize("hasRole('ROLE_OWNER') or hasRole('ROLE_MASTER')")
     @Operation(summary = "메뉴 옵션 수정", description = "메뉴 옵션의 정보를 수정합니다.")
     public CustomResponse<MenuOptionResponseDTO.MenuOptionSimpleResponseDTO> updateMenuOption(
             @PathVariable("optionId") UUID optionId,
             @Valid @RequestBody MenuRequestDTO.MenuOptionUpdateRequestDTO requestDTO,
-            @AuthenticationPrincipal CurrentUser user) {
+            @AuthenticationPrincipal Passport passport) {
 
         MenuOptionResponseDTO.MenuOptionSimpleResponseDTO result =
-                menuCommandService.updateMenuOption(optionId, requestDTO, user);
+                menuCommandService.updateMenuOption(optionId, requestDTO, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, result);
     }
 
     @DeleteMapping("/options/{optionId}/deleted")
-    @PreAuthorize("(hasRole('ROLE_OWNER') and authentication.principal.id == #user.id()) or hasRole('ROLE_MASTER')")
+    @PreAuthorize("hasRole('ROLE_OWNER') or hasRole('ROLE_MASTER')")
     @Operation(summary = "메뉴 옵션 삭제", description = "메뉴 옵션을 삭제합니다.")
     public CustomResponse<String> deleteMenuOption(
             @PathVariable("optionId") UUID optionId,
-            @AuthenticationPrincipal CurrentUser user) {
+            @AuthenticationPrincipal Passport passport) {
 
-        menuCommandService.deleteMenuOption(optionId, user);
+        menuCommandService.deleteMenuOption(optionId, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, "메뉴 옵션 삭제 완료");
     }
 }

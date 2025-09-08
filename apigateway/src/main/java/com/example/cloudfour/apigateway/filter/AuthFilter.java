@@ -1,6 +1,10 @@
 package com.example.cloudfour.apigateway.filter;
 
+import com.example.cloudfour.apigateway.client.PassportClient;
+import com.example.cloudfour.apigateway.dto.PassportRequestDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,16 +17,20 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @Slf4j
 @Component
 public class AuthFilter extends AbstractGatewayFilterFactory<AuthFilter.Config> {
 
     private final ReactiveJwtDecoder decoder;
+    private final PassportClient passportClient;
 
-    public AuthFilter(ReactiveJwtDecoder decoder) {
+    @Autowired
+    public AuthFilter(ReactiveJwtDecoder decoder, @Lazy PassportClient passportClient) {
         super(Config.class);
         this.decoder = decoder;
+        this.passportClient = passportClient;
     }
 
     public static class Config {
@@ -43,8 +51,40 @@ public class AuthFilter extends AbstractGatewayFilterFactory<AuthFilter.Config> 
             }
 
             return decoder.decode(token)
-                    .flatMap(jwt -> chain.filter(exchange))
-                    .onErrorResume(err -> unauthorized(exchange, "invalid_token"));
+                    .flatMap(jwt -> {
+                        log.info("JWT 검증 성공, Passport 생성 시작");
+
+                        String userId = jwt.getSubject();
+                        String role = jwt.getClaimAsString("role");
+
+                        if (userId == null) {
+                            return Mono.error(new IllegalArgumentException("JWT에 userId가 없습니다"));
+                        }
+                        if (role == null) {
+                            return Mono.error(new IllegalArgumentException("JWT에 권한이 없습니다"));
+                        }
+
+                        PassportRequestDTO passportRequest = PassportRequestDTO.builder()
+                                .userId(UUID.fromString(userId))
+                                .role(role)
+                                .build();
+
+                        log.info("Passport 생성 요청: userId={}, role={}", userId, role);
+
+                        return Mono.fromCallable(() -> passportClient.createPassport(passportRequest))
+                                .flatMap(passportResponse -> {
+                                    ServerHttpRequest modifiedRequest = request.mutate()
+                                            .header("X-Passport", passportResponse.getPassportData())
+                                            .build();
+
+                                    log.info("Passport 생성 완료, 헤더에 추가: passportId={}", passportResponse.getPassportId());
+                                    return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                                });
+                    })
+                    .onErrorResume(err -> {
+                        log.error("JWT 검증 또는 Passport 생성 실패", err);
+                        return unauthorized(exchange, "invalid_token");
+                    });
         };
     }
 

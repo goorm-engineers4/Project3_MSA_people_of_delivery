@@ -6,7 +6,7 @@ import com.example.cloudfour.cartservice.domain.cartitem.entity.CartItem;
 import com.example.cloudfour.cartservice.domain.cartitem.exception.CartItemErrorCode;
 import com.example.cloudfour.cartservice.domain.cartitem.exception.CartItemException;
 import com.example.cloudfour.cartservice.domain.cartitem.repository.CartItemRepository;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,10 +22,10 @@ public class CartItemQueryService {
 
     private final CartItemRepository cartItemRepository;
 
-    public CartItemResponseDTO.CartItemListResponseDTO getCartItemById(UUID cartItemId, CurrentUser user) {
-        validateUser(user);
+    public CartItemResponseDTO.CartItemListResponseDTO getCartItemById(UUID cartItemId, Passport passport) {
+        validateUser(passport);
         validateCartItemId(cartItemId);
-        validateCartItemOwnership(cartItemId, user.id());
+        validateCartItemOwnership(cartItemId, passport.getUserId());
 
         CartItem cartItem = findCartItemWithOptions(cartItemId);
         
@@ -33,8 +33,8 @@ public class CartItemQueryService {
         return CartItemConverter.toCartItemListResponseDTO(cartItem);
     }
 
-    private void validateUser(CurrentUser user) {
-        if (user == null || user.id() == null) {
+    private void validateUser(Passport passport) {
+        if (passport == null) {
             log.warn("유효하지 않은 사용자");
             throw new CartItemException(CartItemErrorCode.UNAUTHORIZED_ACCESS);
         }
