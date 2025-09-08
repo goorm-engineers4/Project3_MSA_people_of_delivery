@@ -5,7 +5,7 @@ import com.example.cloudfour.cartservice.domain.cart.dto.CartResponseDTO;
 import com.example.cloudfour.cartservice.domain.cart.service.command.CartCommandService;
 import com.example.cloudfour.cartservice.domain.cart.service.query.CartQueryService;
 import com.example.cloudfour.modulecommon.apiPayLoad.CustomResponse;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -32,35 +32,35 @@ public class CartController {
     private final CartQueryService cartQueryService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER')")
     @Operation(summary = "장바구니 생성", description = "장바구니를 생성합니다. 장바구니 생성에 사용되는 API입니다.")
     public CustomResponse<CartResponseDTO.CartCreateResponseDTO> createCart(
             @Valid @RequestBody CartRequestDTO.CartCreateRequestDTO cartCreateRequestDTO,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
     ){
-        CartResponseDTO.CartCreateResponseDTO cart = cartCommandService.createCart(cartCreateRequestDTO,user);
+        CartResponseDTO.CartCreateResponseDTO cart = cartCommandService.createCart(cartCreateRequestDTO, passport);
         return CustomResponse.onSuccess(HttpStatus.CREATED, cart);
     }
 
     @GetMapping("/{cartId}")
-    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER')")
     @Operation(summary = "장바구니 조회", description = "장바구니를 조회합니다. 장바구니 조회에 사용되는 API입니다.")
     public CustomResponse<CartResponseDTO.CartDetailResponseDTO> getCart(
             @PathVariable("cartId") UUID cartId,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
     ){
-        CartResponseDTO.CartDetailResponseDTO cart = cartQueryService.getCartListById(cartId,user);
+        CartResponseDTO.CartDetailResponseDTO cart = cartQueryService.getCartListById(cartId, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, cart);
     }
 
     @DeleteMapping("/{cartId}")
-    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER')")
     @Operation(summary = "장바구니 삭제", description = "장바구니를 삭제합니다. 장바구니 삭제에 사용되는 API입니다.")
     public CustomResponse<String> deleteCart(
             @PathVariable("cartId") UUID cartId,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
     ) {
-        cartCommandService.deleteCart(cartId, user);
+        cartCommandService.deleteCart(cartId, passport);
         return CustomResponse.onSuccess(HttpStatus.OK, "장바구니 삭제 완료");
     }
 
