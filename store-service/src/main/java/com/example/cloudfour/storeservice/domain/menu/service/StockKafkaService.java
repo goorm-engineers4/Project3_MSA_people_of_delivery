@@ -58,7 +58,6 @@ public class StockKafkaService {
             log.info("주문 예약 성공 - OrderId: {}", event.getOrderId());
 
         } catch (Exception e) {
-            // 예외 발생 시 롤백
             rollbackReservations(event.getOrderId());
             log.error("주문 예약 실패: {}", event.getOrderId(), e);
         }
