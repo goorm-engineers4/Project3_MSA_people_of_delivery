@@ -13,7 +13,7 @@ import com.example.cloudfour.cartservice.domain.cartitem.dto.CartItemRequestDTO;
 import com.example.cloudfour.cartservice.domain.cartitem.dto.CartItemResponseDTO;
 import com.example.cloudfour.cartservice.domain.cartitem.service.command.CartItemCommandService;
 import com.example.cloudfour.cartservice.commondto.MenuResponseDTO;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,13 +34,13 @@ public class CartCommandService {
 
     public CartResponseDTO.CartCreateResponseDTO createCart(
             CartRequestDTO.CartCreateRequestDTO req, 
-            CurrentUser user
+            Passport passport
     ) {
-        validateUser(user);
+        validateUser(passport);
         validateStoreExists(req.getStoreId());
-        validateNoDuplicateCart(user.id(), req.getStoreId());
+        validateNoDuplicateCart(passport.getUserId(), req.getStoreId());
 
-        Cart cart = createCartEntity(user.id(), req.getStoreId());
+        Cart cart = createCartEntity(passport.getUserId(), req.getStoreId());
         Cart savedCart = cartRepository.save(cart);
 
         MenuResponseDTO menu = storeClient.menuById(req.getMenuId());
@@ -48,7 +48,7 @@ public class CartCommandService {
             CartItemConverter.toCartItemAddRequestDTO(req, menu.getPrice());
         
         CartItemResponseDTO.CartItemAddResponseDTO cartItemResponse = 
-            cartItemCommandService.CreateCartItem(cartItemReq, savedCart.getId(), user);
+            cartItemCommandService.CreateCartItem(cartItemReq, savedCart.getId(), passport);
 
         log.info("장바구니 생성 완료 (cartId={}, cartItemId={})", 
             savedCart.getId(), cartItemResponse.getCartItemCommonResponseDTO().getCartItemId());
@@ -60,8 +60,8 @@ public class CartCommandService {
     }
 
     @CacheEvict(value = {"stores", "menus", "menuOptions"}, allEntries = true)
-    public void deleteCart(UUID cartId, CurrentUser user) {
-        validateUser(user);
+    public void deleteCart(UUID cartId, Passport passport) {
+        validateUser(passport);
         
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> {
@@ -69,14 +69,14 @@ public class CartCommandService {
                     return new CartException(CartErrorCode.NOT_FOUND);
                 });
 
-        validateCartOwnership(cart, user.id());
+        validateCartOwnership(cart, passport.getUserId());
         
         cartRepository.delete(cart);
         log.info("장바구니 삭제 완료 (cartId={})", cartId);
     }
 
-    private void validateUser(CurrentUser user) {
-        if (user == null || user.id() == null) {
+    private void validateUser(Passport passport) {
+        if (passport == null) {
             log.warn("유효하지 않은 사용자");
             throw new CartException(CartErrorCode.UNAUTHORIZED_ACCESS);
         }

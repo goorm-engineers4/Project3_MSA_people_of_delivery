@@ -8,7 +8,7 @@ import com.example.cloudfour.cartservice.domain.cart.exception.CartException;
 import com.example.cloudfour.cartservice.domain.cart.repository.CartRepository;
 import com.example.cloudfour.cartservice.domain.cartitem.entity.CartItem;
 import com.example.cloudfour.cartservice.domain.cartitem.repository.CartItemRepository;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,11 +26,11 @@ public class CartQueryService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
 
-    public CartResponseDTO.CartDetailResponseDTO getCartListById(UUID cartId, CurrentUser user) {
-        validateUser(user);
+    public CartResponseDTO.CartDetailResponseDTO getCartListById(UUID cartId, Passport passport) {
+        validateUser(passport);
         validateCartId(cartId);
 
-        Cart cart = findCartWithOwnershipValidation(cartId, user.id());
+        Cart cart = findCartWithOwnershipValidation(cartId, passport.getUserId());
         List<CartItem> cartItemsWithOptions = loadCartItemsWithOptions(cartId);
 
         replaceCartItems(cart, cartItemsWithOptions);
@@ -40,8 +40,8 @@ public class CartQueryService {
     }
 
 
-    private void validateUser(CurrentUser user) {
-        if (user == null || user.id() == null) {
+    private void validateUser(Passport passport) {
+        if (passport == null) {
             log.warn("유효하지 않은 사용자");
             throw new CartException(CartErrorCode.UNAUTHORIZED_ACCESS);
         }
