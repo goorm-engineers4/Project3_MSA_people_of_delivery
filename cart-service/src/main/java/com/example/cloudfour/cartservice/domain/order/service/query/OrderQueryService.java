@@ -16,7 +16,7 @@ import com.example.cloudfour.cartservice.domain.order.exception.OrderItemErrorCo
 import com.example.cloudfour.cartservice.domain.order.exception.OrderItemException;
 import com.example.cloudfour.cartservice.domain.order.repository.OrderItemRepository;
 import com.example.cloudfour.cartservice.domain.order.repository.OrderRepository;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -42,10 +42,10 @@ public class OrderQueryService {
 
     private static final LocalDateTime FIRST_CURSOR = LocalDateTime.now().plusDays(1);
 
-    public OrderResponseDTO.OrderDetailResponseDTO getOrderById(UUID orderId, CurrentUser user) {
-        validateUser(user);
+    public OrderResponseDTO.OrderDetailResponseDTO getOrderById(UUID orderId, Passport passport) {
+        validateUser(passport);
         validateOrderId(orderId);
-        validateOrderOwnership(orderId, user.id());
+        validateOrderOwnership(orderId, passport.getUserId());
 
         Order order = findOrderById(orderId);
         List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
@@ -58,12 +58,12 @@ public class OrderQueryService {
         return OrderConverter.toOrderDetailResponseDTO(order, orderItemDtos, store.getName());
     }
 
-    public OrderItemResponseDTO.OrderItemListResponseDTO getOrderItemById(UUID orderItemId, CurrentUser user){
+    public OrderItemResponseDTO.OrderItemListResponseDTO getOrderItemById(UUID orderItemId, Passport passport){
         OrderItem orderItem = orderItemRepository.findById(orderItemId).orElseThrow(()->{
             log.warn("존재하지 않는 주문 아이템");
             return new OrderItemException(OrderItemErrorCode.NOT_FOUND);
         });
-        if(user == null || orderItemRepository.existsByUserId(orderItem.getId(),user.id())){
+        if(passport == null || orderItemRepository.existsByUserId(orderItem.getId(), passport.getUserId())){
             log.warn("주문 아이템 조회 권한 없음");
             throw new OrderItemException(OrderItemErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -72,8 +72,8 @@ public class OrderQueryService {
         return OrderItemConverter.toOrderItemClassListDTO(orderItem);
     }
 
-    public OrderResponseDTO.OrderUserListResponseDTO getOrderListByUser(CurrentUser user, LocalDateTime cursor, Integer size) {
-        if(user == null){
+    public OrderResponseDTO.OrderUserListResponseDTO getOrderListByUser(Passport passport, LocalDateTime cursor, Integer size) {
+        if(passport == null){
             log.warn("사용자 주문 목록 조회 권한 없음");
             throw new OrderException(OrderErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -82,7 +82,7 @@ public class OrderQueryService {
             cursor = FIRST_CURSOR;
         }
         Pageable pageable = PageRequest.of(0, size);
-        Slice<Order> orders = orderRepository.findAllByUserId(user.id(), cursor, pageable);
+        Slice<Order> orders = orderRepository.findAllByUserId(passport.getUserId(), cursor, pageable);
         if(orders.isEmpty()) {
             log.warn("존재하지 않는 주문");
             throw new OrderException(OrderErrorCode.NOT_FOUND);
@@ -100,9 +100,9 @@ public class OrderQueryService {
         return OrderConverter.toOrderUserListResponseDTO(orderUserResponseDTOS,orders.hasNext(),next_cursor);
     }
 
-    public OrderResponseDTO.OrderStoreListResponseDTO getOrderListByStore(UUID storeId, LocalDateTime cursor, Integer size, CurrentUser user) {
+    public OrderResponseDTO.OrderStoreListResponseDTO getOrderListByStore(UUID storeId, LocalDateTime cursor, Integer size, Passport passport) {
         StoreResponseDTO store = storeClient.storeById(storeId);
-        if(user == null || store.getUserId() != user.id()) {
+        if(passport == null || store.getUserId() != passport.getUserId()) {
             log.info("가게 주문 목록 조회 권한 없음");
             throw new OrderException(OrderErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -128,8 +128,8 @@ public class OrderQueryService {
         return OrderConverter.toOrderStoreListResponseDTO(orderStoreResponseDTOS, orders.hasNext(), next_cursor);
     }
 
-    private void validateUser(CurrentUser user) {
-        if (user == null || user.id() == null) {
+    private void validateUser(Passport passport) {
+        if (passport == null || passport.getUserId() == null) {
             log.warn("유효하지 않은 사용자");
             throw new OrderException(OrderErrorCode.UNAUTHORIZED_ACCESS);
         }
