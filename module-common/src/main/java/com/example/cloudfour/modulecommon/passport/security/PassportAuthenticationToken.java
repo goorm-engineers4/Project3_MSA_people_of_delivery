@@ -1,4 +1,4 @@
-package com.example.cloudfour.modulecommon.security;
+package com.example.cloudfour.modulecommon.passport.security;
 
 import com.example.cloudfour.modulecommon.dto.Passport;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
