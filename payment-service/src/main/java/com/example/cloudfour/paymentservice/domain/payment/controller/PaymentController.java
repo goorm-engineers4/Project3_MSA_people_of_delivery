@@ -1,7 +1,7 @@
 package com.example.cloudfour.paymentservice.domain.payment.controller;
 
 import com.example.cloudfour.modulecommon.apiPayLoad.CustomResponse;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentResponseDTO;
 import com.example.cloudfour.paymentservice.domain.payment.service.command.PaymentCommandService;
@@ -33,13 +33,13 @@ public class PaymentController {
 
     @PostMapping("/confirm")
     @Operation(summary = "결제 승인", description = "프론트엔드에서 받은 결제 정보를 승인합니다.")
-    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER')")
     public CustomResponse<PaymentResponseDTO.PaymentConfirmResponseDTO> confirmPayment(
             @Valid @RequestBody PaymentRequestDTO.PaymentConfirmRequestDTO request,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
     ){
-        log.info("결제 승인 요청: paymentKey={}, orderId={}, userId={}", request.getPaymentKey(), request.getOrderId(), user.id());
-        PaymentResponseDTO.PaymentConfirmResponseDTO response = paymentCommandService.confirmPayment(request, user.id());
+        log.info("결제 승인 요청: paymentKey={}, orderId={}, userId={}", request.getPaymentKey(), request.getOrderId(), passport.getUserId());
+        PaymentResponseDTO.PaymentConfirmResponseDTO response = paymentCommandService.confirmPayment(request, passport.getUserId());
         return CustomResponse.onSuccess(HttpStatus.OK, response);
     }
 
@@ -52,38 +52,38 @@ public class PaymentController {
     }
 
     @PatchMapping("/{orderId}/cancel")
-    @PreAuthorize("hasRole('ROLE_MASTER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_MASTER')")
     @Operation(summary = "결제 취소", description = "결제를 취소합니다.")
     public CustomResponse<PaymentResponseDTO.PaymentCancelResponseDTO> cancelPayment(
             @Valid @RequestBody PaymentRequestDTO.PaymentCancelRequestDTO request,
             @PathVariable("orderId") UUID orderId,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
     ){
-        log.info("결제 취소 요청: orderId={}, userId={}", orderId, user.id());
-        PaymentResponseDTO.PaymentCancelResponseDTO response = paymentCommandService.cancelPayment(request, orderId, user.id());
+        log.info("결제 취소 요청: orderId={}, userId={}", orderId, passport.getUserId());
+        PaymentResponseDTO.PaymentCancelResponseDTO response = paymentCommandService.cancelPayment(request, orderId, passport.getUserId());
         return CustomResponse.onSuccess(HttpStatus.OK, response);
     }
 
     @GetMapping("/{orderId}")
     @Operation(summary = "결제 상세 조회", description = "결제 상세 정보를 조회합니다.")
-    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER')")
     public CustomResponse<PaymentResponseDTO.PaymentDetailResponseDTO> getPayment(
             @PathVariable("orderId") UUID orderId,
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
     ){
-        log.info("결제 상세 조회 요청: orderId={}, userId={}", orderId, user.id());
-        PaymentResponseDTO.PaymentDetailResponseDTO response = paymentQueryService.getDetailPayment(orderId, user.id());
+        log.info("결제 상세 조회 요청: orderId={}, userId={}", orderId, passport.getUserId());
+        PaymentResponseDTO.PaymentDetailResponseDTO response = paymentQueryService.getDetailPayment(orderId, passport.getUserId());
         return CustomResponse.onSuccess(HttpStatus.OK, response);
     }
 
     @GetMapping("/me")
     @Operation(summary = "내 결제 이력", description = "내 결제 이력을 조회합니다.")
-    @PreAuthorize("hasRole('ROLE_CUSTOMER') and authentication.principal.id == #user.id()")
+    @PreAuthorize("hasRole('ROLE_CUSTOMER')")
     public CustomResponse<PaymentResponseDTO.PaymentUserListResponseDTO> getUserPayments(
-            @AuthenticationPrincipal CurrentUser user
+            @AuthenticationPrincipal Passport passport
     ){
-        log.info("내 결제 이력 조회 요청: userId={}", user.id());
-        PaymentResponseDTO.PaymentUserListResponseDTO response = paymentQueryService.getUserListPayment(user.id());
+        log.info("내 결제 이력 조회 요청: userId={}", passport.getUserId());
+        PaymentResponseDTO.PaymentUserListResponseDTO response = paymentQueryService.getUserListPayment(passport.getUserId());
         return CustomResponse.onSuccess(HttpStatus.OK, response);
     }
 }
