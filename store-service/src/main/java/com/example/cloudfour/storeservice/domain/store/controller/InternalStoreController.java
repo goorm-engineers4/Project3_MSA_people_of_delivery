@@ -1,12 +1,7 @@
 package com.example.cloudfour.storeservice.domain.store.controller;
 
 import com.example.cloudfour.modulecommon.apiPayLoad.CustomResponse;
-import com.example.cloudfour.storeservice.domain.commondto.StoreCartResponseDTO;
-import com.example.cloudfour.storeservice.domain.store.converter.StoreConverter;
-import com.example.cloudfour.storeservice.domain.store.dto.StoreResponseDTO;
-import com.example.cloudfour.storeservice.domain.store.entity.Store;
-import com.example.cloudfour.storeservice.domain.store.exception.StoreErrorCode;
-import com.example.cloudfour.storeservice.domain.store.exception.StoreException;
+import com.example.cloudfour.storeservice.domain.common.StoreCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.store.repository.StoreRepository;
 import com.example.cloudfour.storeservice.domain.store.service.query.StoreQueryService;
 import lombok.RequiredArgsConstructor;

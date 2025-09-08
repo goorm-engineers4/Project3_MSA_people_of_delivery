@@ -22,7 +22,7 @@ public class InternalStockController {
     private final StockCommandService stockCommandService;
 
     @GetMapping("/menus/{menuId}/stock")
-    public StockResponseDTO getMenuStock ( @PathVariable("menuId") UUID menuId ) {
+    public StockResponseDTO.StockCacheResponseDTO getMenuStock ( @PathVariable("menuId") UUID menuId ) {
         return stockQueryService.getMenuStock(menuId);
     }
 
