@@ -1,6 +1,6 @@
 package com.example.cloudfour.storeservice.domain.store.service.command;
 
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.storeservice.domain.region.entity.Region;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionErrorCode;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionException;
@@ -34,10 +34,10 @@ public class StoreCommandService {
 
     public StoreResponseDTO.StoreCreateResponseDTO createStore(
             StoreRequestDTO.StoreCreateRequestDTO dto,
-            CurrentUser user
+            Passport passport
     ) {
 
-        if(user==null){
+        if(passport==null){
             log.warn("가게 생성 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -64,7 +64,7 @@ public class StoreCommandService {
         Store store = StoreConverter.toStore(dto);
         store.setStoreCategory(category);
         store.setRegion(region);
-        store.setOwnerId(user.id());
+        store.setOwnerId(passport.getUserId());
 
         storeRepository.save(store);
         log.info("가게 저장 성공");
@@ -74,7 +74,7 @@ public class StoreCommandService {
     public StoreResponseDTO.StoreUpdateResponseDTO updateStore(
             UUID storeId,
             StoreRequestDTO.StoreUpdateRequestDTO dto,
-            CurrentUser user
+            Passport passport
     ) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() ->{
@@ -82,7 +82,7 @@ public class StoreCommandService {
                     return new StoreException(StoreErrorCode.NOT_FOUND);
                 });
 
-        if (user == null || !store.getOwnerId().equals(user.id())) {
+        if (passport == null || !store.getOwnerId().equals(passport.getUserId())) {
             log.warn("가게 수정 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -108,14 +108,14 @@ public class StoreCommandService {
     }
 
     
-    public void deleteStore(UUID storeId, CurrentUser user) {
+    public void deleteStore(UUID storeId, Passport passport) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> {
                     log.warn("존재하지 않는 가게");
                     return new StoreException(StoreErrorCode.NOT_FOUND);
                 });
 
-        if (user==null || !store.getOwnerId().equals(user.id())) {
+        if (passport==null || !store.getOwnerId().equals(passport.getUserId())) {
             log.warn("가게 삭제 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }
