@@ -26,7 +26,7 @@ import com.example.cloudfour.cartservice.domain.order.repository.OrderItemOption
 import com.example.cloudfour.cartservice.domain.order.repository.OrderItemRepository;
 import com.example.cloudfour.cartservice.domain.order.repository.OrderRepository;
 import com.example.cloudfour.cartservice.service.OrderEventPublishService;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,13 +53,13 @@ public class OrderCommandService {
     public OrderResponseDTO.OrderCreateResponseDTO createOrder(
             OrderRequestDTO.OrderCreateRequestDTO req, 
             UUID cartId, 
-            CurrentUser user
+            Passport passport
     ) {
-        validateUser(user);
+        validateUser(passport);
         validateCartId(cartId);
 
-        Cart cart = findCartWithOwnershipValidation(cartId, user.id());
-        UserAddressResponseDTO userAddress = fetchUserAddress(user.id());
+        Cart cart = findCartWithOwnershipValidation(cartId, passport.getUserId());
+        UserAddressResponseDTO userAddress = fetchUserAddress(passport.getUserId());
         validateStoreExists(cart.getStore());
         validateCartItemsNotEmpty(cart.getCartItems());
 
@@ -67,7 +67,7 @@ public class OrderCommandService {
 
         int totalPrice = calculateTotalPrice(cart.getCartItems());
         
-        Order order = createOrderEntity(req, totalPrice, userAddress.getAddress(), cart.getStore(), user.id());
+        Order order = createOrderEntity(req, totalPrice, userAddress.getAddress(), cart.getStore(), passport.getUserId());
         orderRepository.save(order);
         
         List<OrderItem> orderItems = createOrderItems(cart.getCartItems(), order);
@@ -85,12 +85,12 @@ public class OrderCommandService {
 
     public OrderResponseDTO.OrderUpdateResponseDTO updateOrder(
             OrderRequestDTO.OrderUpdateRequestDTO req, 
-            UUID orderId, 
-            CurrentUser user
+            UUID orderId,
+            Passport passport
     ) {
-        validateUser(user);
+        validateUser(passport);
         validateOrderId(orderId);
-        validateOrderOwnership(orderId, user.id());
+        validateOrderOwnership(orderId, passport.getUserId());
 
         Order order = findOrderById(orderId);
         OrderStatus prevStatus = order.getStatus();
@@ -110,10 +110,10 @@ public class OrderCommandService {
         return OrderConverter.toOrderUpdateResponseDTO(order, prevStatus);
     }
 
-    public void deleteOrder(UUID orderId, CurrentUser user) {
-        validateUser(user);
+    public void deleteOrder(UUID orderId, Passport passport) {
+        validateUser(passport);
         validateOrderId(orderId);
-        validateOrderOwnership(orderId, user.id());
+        validateOrderOwnership(orderId, passport.getUserId());
 
         Order order = findOrderById(orderId);
 
@@ -168,8 +168,8 @@ public class OrderCommandService {
             orderId, prevStatus, newOrderStatus);
     }
 
-    private void validateUser(CurrentUser user) {
-        if (user == null || user.id() == null) {
+    private void validateUser(Passport passport) {
+        if (passport == null || passport.getUserId() == null) {
             log.warn("유효하지 않은 사용자");
             throw new OrderException(OrderErrorCode.UNAUTHORIZED_ACCESS);
         }

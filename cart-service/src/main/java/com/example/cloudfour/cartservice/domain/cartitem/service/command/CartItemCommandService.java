@@ -15,7 +15,7 @@ import com.example.cloudfour.cartservice.domain.cartitem.exception.CartItemExcep
 import com.example.cloudfour.cartservice.domain.cartitem.repository.CartItemRepository;
 import com.example.cloudfour.cartservice.commondto.MenuOptionResponseDTO;
 import com.example.cloudfour.cartservice.commondto.MenuResponseDTO;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,14 +41,14 @@ public class CartItemCommandService {
     public CartItemResponseDTO.CartItemAddResponseDTO CreateCartItem(
             CartItemRequestDTO.CartItemAddRequestDTO req,
             UUID cartId,
-            CurrentUser user
+            Passport passport
     ) {
-        if (user == null) {
+        if (passport == null) {
             log.warn("장바구니 아이템 추가 권한 없음");
             throw new CartItemException(CartItemErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        Cart cart = cartRepository.findByIdAndUser(cartId, user.id())
+        Cart cart = cartRepository.findByIdAndUser(cartId, passport.getUserId())
                 .orElseThrow(() -> {
                     log.warn("존재하지 않는 장바구니");
                     return new CartException(CartErrorCode.NOT_FOUND);
@@ -100,14 +100,14 @@ public class CartItemCommandService {
     public CartItemResponseDTO.CartItemAddResponseDTO AddCartItem(
             CartItemRequestDTO.CartItemAddRequestDTO req,
             UUID cartId,
-            CurrentUser user
+            Passport passport
     ) {
-        if (user == null) {
+        if (passport == null) {
             log.warn("장바구니 아이템 생성 권한 없음");
             throw new CartItemException(CartItemErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        Cart cart = cartRepository.findByIdAndUser(cartId, user.id())
+        Cart cart = cartRepository.findByIdAndUser(cartId, passport.getUserId())
                 .orElseThrow(() -> {
                     log.warn("존재하지 않는 장바구니");
                     return new CartException(CartErrorCode.NOT_FOUND);
@@ -161,14 +161,14 @@ public class CartItemCommandService {
     public CartItemResponseDTO.CartItemUpdateResponseDTO updateCartItem(
             CartItemRequestDTO.CartItemUpdateRequestDTO req,
             UUID cartItemId,
-            CurrentUser user
+            Passport passport
     ) {
         CartItem cartItem = cartItemRepository.findById(cartItemId).orElseThrow(() -> {
             log.warn("존재하지 않는 장바구니 아이템");
             return new CartItemException(CartItemErrorCode.NOT_FOUND);
         });
 
-        if (user == null || !cartItemRepository.existsByCartItemAndUser(cartItemId, user.id())) {
+        if (passport == null || !cartItemRepository.existsByCartItemAndUser(cartItemId, passport.getUserId())) {
             log.warn("장바구니 아이템 수정 권한 없음");
             throw new CartItemException(CartItemErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -205,7 +205,7 @@ public class CartItemCommandService {
         return CartItemConverter.toCartItemUpdateResponseDTO(loaded);
     }
 
-    public void deleteCartItem(UUID cartItemId, CurrentUser user) {
+    public void deleteCartItem(UUID cartItemId, Passport passport) {
         CartItem cartItem = cartItemRepository.findById(cartItemId).orElseThrow(() -> {
             log.warn("존재하지 않는 장바구니 아이템");
             return new CartItemException(CartItemErrorCode.NOT_FOUND);
@@ -216,7 +216,7 @@ public class CartItemCommandService {
             return new CartException(CartErrorCode.NOT_FOUND);
         });
 
-        if (user == null || !cartItemRepository.existsByCartItemAndUser(cartItemId, user.id())) {
+        if (passport == null || !cartItemRepository.existsByCartItemAndUser(cartItemId, passport.getUserId())) {
             log.warn("장바구니 아이템 삭제 권한 없음");
             throw new CartItemException(CartItemErrorCode.UNAUTHORIZED_ACCESS);
         }

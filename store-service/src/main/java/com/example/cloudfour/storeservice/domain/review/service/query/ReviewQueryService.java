@@ -1,6 +1,6 @@
 package com.example.cloudfour.storeservice.domain.review.service.query;
 
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.storeservice.domain.collection.document.ReviewDocument;
 import com.example.cloudfour.storeservice.domain.collection.repository.query.ReviewSearchRepository;
 import com.example.cloudfour.storeservice.domain.common.UserResponseDTO;
@@ -35,13 +35,13 @@ public class ReviewQueryService {
     private static final LocalDateTime first_cursor = LocalDateTime.now().plusDays(1);
     private static final String BASE = "http://user-service/internal/users";
 
-    public ReviewResponseDTO.ReviewDetailResponseDTO getReviewById(UUID reviewId, CurrentUser user) {
-        if(user==null){
+    public ReviewResponseDTO.ReviewDetailResponseDTO getReviewById(UUID reviewId, Passport passport) {
+        if(passport==null){
             log.warn("상세 리뷰 조회 접근 권한 없음");
             throw new ReviewException(ReviewErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        UserResponseDTO findUser =  rt.getForObject(BASE+"/{id}",UserResponseDTO.class,user.id());
+        UserResponseDTO findUser =  rt.getForObject(BASE+"/{id}",UserResponseDTO.class,passport.getUserId());
 
         if(findUser == null){
             log.warn("상세 리뷰 조회 접근 권한 없음");
@@ -58,12 +58,12 @@ public class ReviewQueryService {
         return ReviewConverter.toReviewDetailResponseDTO(findReview,findReview.getUserName());
     }
 
-    public ReviewResponseDTO.ReviewStoreListResponseDTO getReviewListByStore(UUID storeId, LocalDateTime cursor, Integer size, CurrentUser user) {
+    public ReviewResponseDTO.ReviewStoreListResponseDTO getReviewListByStore(UUID storeId, LocalDateTime cursor, Integer size, Passport passport) {
         storeRepository.findById(storeId).orElseThrow(()->{
             log.warn("존재하지 않는 가게");
             return new StoreException(StoreErrorCode.NOT_FOUND);
         });
-        if(user==null){
+        if(passport==null){
             log.warn("가게 리뷰 목록 조회 접근 권한 없음");
             throw new ReviewException(ReviewErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -88,8 +88,8 @@ public class ReviewQueryService {
         return ReviewConverter.toReviewStoreListResponseDTO(reviewStoreListResponseDTOS,findReviews.hasNext(),next_cursor);
     }
 
-    public ReviewResponseDTO.ReviewUserListResponseDTO getReviewListByUser(LocalDateTime cursor, Integer size, CurrentUser user) {
-        if(user==null){
+    public ReviewResponseDTO.ReviewUserListResponseDTO getReviewListByUser(LocalDateTime cursor, Integer size, Passport passport) {
+        if(passport==null){
             log.warn("가게 리뷰 목록 조회 접근 권한 없음");
             throw new ReviewException(ReviewErrorCode.UNAUTHORIZED_ACCESS);
         }
@@ -98,7 +98,7 @@ public class ReviewQueryService {
         }
         log.info("사용자 리뷰 목록 조회 권한 확인 성공");
         Pageable pageable = PageRequest.of(0,size);
-        Slice<ReviewDocument> findReviews = reviewRepository.findAllByUserId(user.id(),cursor,pageable);
+        Slice<ReviewDocument> findReviews = reviewRepository.findAllByUserId(passport.getUserId(),cursor,pageable);
         if(findReviews.isEmpty()){
             log.info("사용자 리뷰 데이터 없음");
             throw new ReviewException(ReviewErrorCode.NOT_FOUND);

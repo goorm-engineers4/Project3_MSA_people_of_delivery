@@ -67,3 +67,6 @@ spring:
     topic:
       order-events: order-events
       payment-events: payment-events
+      
+passport:
+  secret-key: ${PASSPORT_SECRET}
