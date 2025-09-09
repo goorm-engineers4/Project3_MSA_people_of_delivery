@@ -1,5 +1,7 @@
 package com.example.cloudfour.storeservice.domain.menu.service.command;
 
+import com.example.cloudfour.storeservice.domain.menu.dto.PaymentEvent;
+import com.example.cloudfour.storeservice.domain.menu.dto.StockResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.entity.Stock;
 import com.example.cloudfour.storeservice.domain.menu.exception.StockErrorCode;
 import com.example.cloudfour.storeservice.domain.menu.exception.StockException;
@@ -14,6 +16,8 @@ import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Transactional
@@ -42,6 +46,33 @@ public class StockCommandService {
         stockRedisService.updateStockInCache(stockId, stock.getQuantity());
         log.info("재고 증가 - stockId: {}, quantity: {}, total: {}", stockId, quantity, stock.getQuantity());
 
+    }
+
+    public boolean decreaseListStock(List<PaymentEvent.PaymentCompletedEvent.OrderItem> orderItems){
+        List<StockResponseDTO.StockUpdateInfo> stockUpdates = new ArrayList<>();
+        for (PaymentEvent.PaymentCompletedEvent.OrderItem item : orderItems) {
+            Stock stock = stockRepository.findByIdWithOptimisticLock(item.getMenuId())
+                    .orElseThrow(()-> new StockException(StockErrorCode.NOT_FOUND));
+
+            if (stock.getQuantity() < item.getQuantity()) {
+                    log.warn("재고 부족 - MenuId: {}, Required: {}, Available: {}",
+                        item.getMenuId(), item.getQuantity(), stock.getQuantity());
+                return false;
+            }
+
+            stock.decrease(item.getQuantity());
+            stockRedisService.updateStockInCache(item.getStockId(), stock.getQuantity());
+            stockUpdates.add(StockResponseDTO.StockUpdateInfo.builder()
+                    .stockId(stock.getId())
+                    .quantity(stock.getQuantity())
+                    .build());
+        }
+
+        for (StockResponseDTO.StockUpdateInfo updateInfo : stockUpdates) {
+            stockRedisService.updateStockInCache(updateInfo.getStockId(), updateInfo.getQuantity());
+        }
+
+        return true;
     }
 
     @Recover

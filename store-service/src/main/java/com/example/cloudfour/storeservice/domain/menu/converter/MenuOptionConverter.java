@@ -1,7 +1,7 @@
 package com.example.cloudfour.storeservice.domain.menu.converter;
 
 import com.example.cloudfour.storeservice.domain.collection.document.StoreDocument;
-import com.example.cloudfour.storeservice.domain.commondto.MenuOptionCartResponseDTO;
+import com.example.cloudfour.storeservice.domain.common.MenuOptionCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.controller.MenuOptionCommonResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.dto.MenuOptionResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.entity.MenuOption;

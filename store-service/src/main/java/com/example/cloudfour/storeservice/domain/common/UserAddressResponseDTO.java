@@ -1,4 +1,4 @@
-package com.example.cloudfour.storeservice.domain.commondto;
+package com.example.cloudfour.storeservice.domain.common;
 
 import lombok.Builder;
 import lombok.Getter;

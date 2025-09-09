@@ -74,6 +74,7 @@ dependencies {
     }
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.batch:spring-batch-test'
     testImplementation 'org.springframework.security:spring-security-test'
@@ -83,6 +84,10 @@ dependencies {
     // test에서도 lombok 사용 가능하게 추가
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
+    testImplementation 'org.testcontainers:testcontainers:1.19.0'
+    testRuntimeOnly 'org.testcontainers:testcontainers:1.19.0'
+
 }
 
 

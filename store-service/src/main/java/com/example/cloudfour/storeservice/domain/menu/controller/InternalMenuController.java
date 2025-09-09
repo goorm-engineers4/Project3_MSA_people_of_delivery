@@ -1,19 +1,8 @@
 package com.example.cloudfour.storeservice.domain.menu.controller;
 
 import com.example.cloudfour.modulecommon.apiPayLoad.CustomResponse;
-import com.example.cloudfour.storeservice.domain.commondto.MenuCartResponseDTO;
-import com.example.cloudfour.storeservice.domain.commondto.MenuOptionCartResponseDTO;
-import com.example.cloudfour.storeservice.domain.menu.converter.MenuConverter;
-import com.example.cloudfour.storeservice.domain.menu.converter.MenuOptionConverter;
-import com.example.cloudfour.storeservice.domain.menu.dto.MenuOptionResponseDTO;
-import com.example.cloudfour.storeservice.domain.menu.dto.MenuResponseDTO;
-import com.example.cloudfour.storeservice.domain.menu.entity.Menu;
-import com.example.cloudfour.storeservice.domain.menu.entity.MenuOption;
-import com.example.cloudfour.storeservice.domain.menu.exception.MenuErrorCode;
-import com.example.cloudfour.storeservice.domain.menu.exception.MenuException;
-import com.example.cloudfour.storeservice.domain.menu.exception.MenuOptionErrorCode;
-import com.example.cloudfour.storeservice.domain.menu.exception.MenuOptionException;
-import com.example.cloudfour.storeservice.domain.menu.repository.MenuOptionRepository;
+import com.example.cloudfour.storeservice.domain.common.MenuCartResponseDTO;
+import com.example.cloudfour.storeservice.domain.common.MenuOptionCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.repository.MenuRepository;
 import com.example.cloudfour.storeservice.domain.menu.service.query.MenuQueryService;
 import lombok.RequiredArgsConstructor;

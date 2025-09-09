@@ -6,7 +6,7 @@ import com.example.cloudfour.storeservice.domain.collection.repository.query.Sto
 
 import com.example.cloudfour.storeservice.domain.common.RegionResponseDTO;
 
-import com.example.cloudfour.storeservice.domain.commondto.StoreCartResponseDTO;
+import com.example.cloudfour.storeservice.domain.common.StoreCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionErrorCode;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionException;
 import com.example.cloudfour.storeservice.domain.store.converter.StoreConverter;

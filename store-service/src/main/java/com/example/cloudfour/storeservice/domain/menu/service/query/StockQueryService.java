@@ -27,19 +27,19 @@ public class StockQueryService {
     private final StockRedisService stockRedisService;
 
     @Transactional(readOnly = true)
-    public StockResponseDTO getMenuStock(UUID menuId){
+    public StockResponseDTO.StockCacheResponseDTO getMenuStock(UUID menuId){
         Menu menu = menuRepository.findById(menuId).orElseThrow(()->new MenuException(MenuErrorCode.NOT_FOUND));
         UUID stockId = menu.getStock().getId();
         Long cachedQuantity = stockRedisService.getStockFromCache(stockId);
 
         if (cachedQuantity != null) {
             log.info("Redis에서 재고 찾음 - stockId: {}, quantity: {}", stockId, cachedQuantity);
-            return StockConverter.CachetoStockResposneDTO(stockId,menuId,cachedQuantity);
+            return StockConverter.CachetoStockResponseDTO(stockId,menuId,cachedQuantity);
         }
 
         Stock stock = stockRepository.findByIdWithOptimisticLock(stockId).orElseThrow(()->new StockException(StockErrorCode.NOT_FOUND));
         log.info("Redis에서 재고 발견 X, DB에서 찾음 - stockId: {}, quantity: {}", stockId, cachedQuantity);
         stockRedisService.cacheStock(stockId, stock.getQuantity());
-        return StockConverter.toStockResposneDTO(stock);
+        return StockConverter.toStockResponseDTO(stock);
     }
 }

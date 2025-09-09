@@ -3,8 +3,8 @@ package com.example.cloudfour.storeservice.domain.menu.service.query;
 import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.storeservice.domain.collection.document.StoreDocument;
 import com.example.cloudfour.storeservice.domain.collection.repository.query.StoreSearchRepository;
-import com.example.cloudfour.storeservice.domain.commondto.MenuCartResponseDTO;
-import com.example.cloudfour.storeservice.domain.commondto.MenuOptionCartResponseDTO;
+import com.example.cloudfour.storeservice.domain.common.MenuCartResponseDTO;
+import com.example.cloudfour.storeservice.domain.common.MenuOptionCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.converter.MenuConverter;
 import com.example.cloudfour.storeservice.domain.menu.converter.MenuOptionConverter;
 import com.example.cloudfour.storeservice.domain.menu.dto.MenuResponseDTO;
@@ -67,7 +67,7 @@ public class MenuQueryService {
         for (StoreDocument.Menu menu : menus) {
             UUID menuId = menu.getId();
 
-            StockResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
+            StockResponseDTO.StockCacheResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
 
             if (menu.getStock() != null) {
                 menu.getStock().updateStock(
@@ -118,7 +118,7 @@ public class MenuQueryService {
         for (StoreDocument.Menu menu : menus) {
             UUID menuId = menu.getId();
 
-            StockResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
+            StockResponseDTO.StockCacheResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
 
             if (menu.getStock() != null) {
                 menu.getStock().updateStock(
@@ -173,7 +173,7 @@ public class MenuQueryService {
                     log.warn("존재하지 않는 메뉴");
                     return new MenuException(MenuErrorCode.NOT_FOUND);
                 });
-        StockResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
+        StockResponseDTO.StockCacheResponseDTO stockResponseDTO = stockQueryService.getMenuStock(menuId);
         storeDocument.getStock().updateStock(stockResponseDTO.getStockId(),stockResponseDTO.getQuantity());
         log.info("메뉴 상세 조회 권한 확인 성공");
         var optionDTOs = storeMongoRepository.findMenuOptionByMenuIdOrderByAdditionalPrice(menuId)

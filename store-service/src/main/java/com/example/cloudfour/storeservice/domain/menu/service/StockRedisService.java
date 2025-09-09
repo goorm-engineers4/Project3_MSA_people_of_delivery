@@ -1,7 +1,6 @@
 package com.example.cloudfour.storeservice.domain.menu.service;
 
 import com.example.cloudfour.storeservice.util.RedisUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,7 +14,6 @@ import java.util.UUID;
 public class StockRedisService {
 
     private final RedisUtil redisUtil;
-    private final ObjectMapper objectMapper;
 
     private static final String STOCK_PREFIX = "stock:";
     private static final Duration DEFAULT_TTL = Duration.ofHours(1);
