@@ -30,6 +30,6 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .components(new Components().addSecuritySchemes("bearerAuth", securityScheme))
                 .security(Arrays.asList(securityRequirement))
-                .addServersItem(new Server().url("/"));
+                .addServersItem(new Server().url("/api/cart-service"));
     }
 }

@@ -11,7 +11,6 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,10 +19,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class StoreClient {
-    
-    private final RestTemplate rt;
-
-    private static final String BASE = "http://store-service/internal";
+    private final StoreFeignClient storeClient;
 
     @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public Boolean existStore(UUID storeId) {
@@ -33,7 +29,7 @@ public class StoreClient {
         }
 
         try {
-            rt.headForHeaders(BASE + "/stores/exists?storeId=" + storeId);
+            storeClient.checkStoreExists(storeId);
             log.info("스토어 존재 확인 완료: {}", storeId);
             return true;
         } catch (HttpClientErrorException.NotFound e) {
@@ -53,7 +49,7 @@ public class StoreClient {
         }
 
         try {
-            rt.headForHeaders(BASE + "/menus/exists?menuId=" + menuId);
+            storeClient.checkMenuExists(menuId);
             log.info("메뉴 존재 확인 완료: {}", menuId);
             return true;
         } catch (HttpClientErrorException.NotFound e) {
@@ -74,7 +70,7 @@ public class StoreClient {
         }
 
         try {
-            StoreResponseDTO store = rt.getForObject(BASE + "/stores/{storeId}", StoreResponseDTO.class, storeId);
+            StoreResponseDTO store = storeClient.storeById(storeId);
             log.info("스토어 정보 조회 완료: {}", storeId);
             return store;
         } catch (Exception e) {
@@ -91,7 +87,7 @@ public class StoreClient {
         }
 
         try {
-            MenuResponseDTO menu = rt.getForObject(BASE + "/menus/{menuId}", MenuResponseDTO.class, menuId);
+            MenuResponseDTO menu = storeClient.menuById(menuId);
             log.info("메뉴 정보 조회 완료: {}", menuId);
             return menu;
         } catch (Exception e) {
@@ -109,11 +105,7 @@ public class StoreClient {
         }
 
         try {
-            MenuOptionResponseDTO option = rt.getForObject(
-                BASE + "/menus/options/{optionId}/detail", 
-                MenuOptionResponseDTO.class, 
-                menuOptionId
-            );
+            MenuOptionResponseDTO option = storeClient.menuOptionById(menuOptionId);
             log.info("메뉴 옵션 정보 조회 완료: {}", menuOptionId);
             return option;
         } catch (Exception e) {
@@ -130,10 +122,8 @@ public class StoreClient {
         }
 
         try {
-            String url = BASE + "/menus/" + menuId + "/stock";
-            log.debug("재고 조회 요청: {}", url);
-
-            MenuQuantityResponseDTO response = rt.getForObject(url, MenuQuantityResponseDTO.class);
+            log.debug("재고 조회 요청: menuId={}", menuId);
+            MenuQuantityResponseDTO response = storeClient.getMenuStock(menuId);
             
             if (response != null) {
                 log.info("메뉴 재고 정보 조회 완료: menuId={}, quantity={}", menuId, response.getQuantity());
@@ -156,8 +146,7 @@ public class StoreClient {
         }
 
         try {
-            String url = BASE + "/menus/stock/" + stockId + "/decrease?quantity=" + quantity;
-            rt.postForObject(url, null, String.class);
+            storeClient.decreaseStock(stockId, quantity);
             log.info("재고 감소 완료: stockId={}, quantity={}", stockId, quantity);
             return true;
         } catch (Exception e) {
@@ -174,8 +163,7 @@ public class StoreClient {
         }
 
         try {
-            String url = BASE + "/menus/stock/" + stockId + "/increase?quantity=" + quantity;
-            rt.postForObject(url, null, String.class);
+            storeClient.increaseStock(stockId, quantity);
             log.info("재고 증가 완료: stockId={}, quantity={}", stockId, quantity);
             return true;
         } catch (Exception e) {

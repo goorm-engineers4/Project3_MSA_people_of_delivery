@@ -9,7 +9,6 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.UUID;
 
@@ -17,9 +16,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class UserClient {
-    private final RestTemplate rt;
-
-    private static final String BASE = "http://user-service/internal/users";
+    private final UserFeignClient userFeignClient;
 
     @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public UserAddressResponseDTO addressById(UUID userId) {
@@ -30,8 +27,7 @@ public class UserClient {
 
         try {
             log.info("사용자 주소 정보 조회 시작: {}", userId);
-            UserAddressResponseDTO address = rt.getForObject(BASE + "/addresses/{userId}", UserAddressResponseDTO.class, userId);
-            
+            UserAddressResponseDTO address = userFeignClient.addressById(userId);
             if (address != null) {
                 log.info("사용자 주소 정보 조회 완료: {} - {}", userId, address.getAddress());
             } else {
@@ -58,8 +54,7 @@ public class UserClient {
 
         try {
             log.info("사용자 정보 조회 시작: {}", userId);
-            UserResponseDTO user = rt.getForObject(BASE + "/{userId}", UserResponseDTO.class, userId);
-            
+            UserResponseDTO user = userFeignClient.userById(userId);
             if (user != null) {
                 log.info("사용자 정보 조회 완료: {} - {}", userId, user.getEmail());
             } else {
@@ -85,7 +80,7 @@ public class UserClient {
 
         try {
             log.info("사용자 존재 확인 시작: {}", userId);
-            rt.headForHeaders(BASE + "/exists?userId=" + userId);
+            userFeignClient.existUserHead(userId);
             log.info("사용자 존재 확인 완료: {}", userId);
             return true;
         } catch (HttpClientErrorException.NotFound e) {
