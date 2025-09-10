@@ -1,6 +1,7 @@
 package com.example.cloudfour.storeservice.domain.review.service.query;
 
 import com.example.cloudfour.modulecommon.dto.Passport;
+import com.example.cloudfour.storeservice.client.UserClient;
 import com.example.cloudfour.storeservice.domain.collection.document.ReviewDocument;
 import com.example.cloudfour.storeservice.domain.collection.repository.query.ReviewSearchRepository;
 import com.example.cloudfour.storeservice.domain.common.UserResponseDTO;
@@ -18,7 +19,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,9 +31,8 @@ import java.util.UUID;
 public class ReviewQueryService {
     private final ReviewSearchRepository reviewRepository;
     private final StoreRepository storeRepository;
-    private final RestTemplate rt;
     private static final LocalDateTime first_cursor = LocalDateTime.now().plusDays(1);
-    private static final String BASE = "http://user-service/internal/users";
+    private final UserClient userClient;
 
     public ReviewResponseDTO.ReviewDetailResponseDTO getReviewById(UUID reviewId, Passport passport) {
         if(passport==null){
@@ -41,7 +40,7 @@ public class ReviewQueryService {
             throw new ReviewException(ReviewErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        UserResponseDTO findUser =  rt.getForObject(BASE+"/{id}",UserResponseDTO.class,passport.getUserId());
+        UserResponseDTO findUser = userClient.getUser(passport.getUserId());
 
         if(findUser == null){
             log.warn("상세 리뷰 조회 접근 권한 없음");

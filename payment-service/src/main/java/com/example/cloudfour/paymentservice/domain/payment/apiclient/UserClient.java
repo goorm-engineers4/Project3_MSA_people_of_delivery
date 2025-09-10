@@ -6,7 +6,6 @@ import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentExce
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.UUID;
 
@@ -14,15 +13,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class UserClient {
-    
-    private final RestTemplate restTemplate;
-    
-    private static final String USER_SERVICE_URL = "http://user-service";
+    private final UserFeginClient userFeginClient;
 
     public boolean existsUser(UUID userId) {
         try {
-            String url = USER_SERVICE_URL + "/users/" + userId + "/exists";
-            Boolean exists = restTemplate.getForObject(url, Boolean.class);
+            Boolean exists = userFeginClient.existsUser(userId);
             return Boolean.TRUE.equals(exists);
         } catch (Exception e) {
             log.error("사용자 존재 여부 확인 실패: userId={}", userId, e);
@@ -32,8 +27,7 @@ public class UserClient {
 
     public UserResponseDTO getUserById(UUID userId) {
         try {
-            String url = USER_SERVICE_URL + "/users/" + userId;
-            UserResponseDTO user = restTemplate.getForObject(url, UserResponseDTO.class);
+            UserResponseDTO user = userFeginClient.getUserById(userId);
             if (user == null) {
                 throw new PaymentException(PaymentErrorCode.USER_NOT_FOUND);
             }

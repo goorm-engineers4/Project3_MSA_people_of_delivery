@@ -4,46 +4,41 @@ import com.example.cloudfour.authservice.domain.auth.dto.UserRequestDTO;
 import com.example.cloudfour.authservice.domain.auth.dto.UserResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class UserClient {
-    private final RestTemplate rt;
-
-    private static final String BASE = "http://user-service/internal/users";
+    private final UserFeignClient feign;
 
     public UserResponseDTO.ExistsByEmailResponseDTO existsByEmail(String email) {
-        return rt.getForObject(BASE + "/exists?email={email}", UserResponseDTO.ExistsByEmailResponseDTO.class, email);
+        return feign.existsByEmail(email);
     }
 
     public UserResponseDTO.UserBriefResponseDTO create(UserRequestDTO.CreateUserRequestDTO req) {
-        return rt.postForObject(BASE, req, UserResponseDTO.UserBriefResponseDTO.class);
+        return feign.create(req);
     }
 
     public UserResponseDTO.UserBriefResponseDTO byEmail(String email) {
-        return rt.getForObject(BASE + "/by-email?email={email}", UserResponseDTO.UserBriefResponseDTO.class, email);
+        return feign.byEmail(email);
     }
 
+    // 오류
     public UserResponseDTO.UserBriefResponseDTO byId(UUID id) {
-        return rt.getForObject(BASE + "/{id}", UserResponseDTO.UserBriefResponseDTO.class, id);
+        return feign.byId(id);
     }
 
     public UserResponseDTO.PasswordVerifyResponseDTO verifyPassword(UUID id, String rawPassword) {
-        return rt.postForObject(BASE + "/{id}/verify-password",
-                new UserRequestDTO.PasswordVerifyRequestDTO(rawPassword),
-                UserResponseDTO.PasswordVerifyResponseDTO.class, id);
+        return feign.verifyPassword(id, new UserRequestDTO.PasswordVerifyRequestDTO(rawPassword));
     }
 
     public void markEmailVerified(UUID id) {
-        rt.postForLocation(BASE + "/{id}/email-verified", null, id);
+        feign.markEmailVerified(id);
     }
 
     public void changePassword(UUID id, String current, String next) {
-        rt.postForLocation(BASE + "/{id}/change-password",
-                new UserRequestDTO.ChangePasswordRequestDTO(current, next), id);
+        feign.changePassword(id, new UserRequestDTO.ChangePasswordRequestDTO(current, next));
     }
 
     public boolean existsByEmailBool(String email) {
@@ -51,13 +46,13 @@ public class UserClient {
         return res != null && res.exists();
     }
 
+    // 오류
     public void startEmailChange(UUID id, String newEmail) {
-        var body = new UserRequestDTO.EmailChangeStartRequestDTO(newEmail);
-        rt.postForLocation(BASE + "/{id}/email-change/start", body, id);
+        feign.startEmailChange(id, new UserRequestDTO.EmailChangeStartRequestDTO(newEmail));
     }
 
+    // 오류
     public void confirmEmailChange(UUID id, String newEmail) {
-        var body = new UserRequestDTO.EmailChangeConfirmRequestDTO(newEmail);
-        rt.postForLocation(BASE + "/{id}/email-change/confirm", body, id);
+        feign.confirmEmailChange(id, new UserRequestDTO.EmailChangeConfirmRequestDTO(newEmail));
     }
 }

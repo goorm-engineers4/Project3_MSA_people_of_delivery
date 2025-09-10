@@ -9,6 +9,7 @@ import com.example.cloudfour.storeservice.domain.common.RegionResponseDTO;
 import com.example.cloudfour.storeservice.domain.common.StoreCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionErrorCode;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionException;
+import com.example.cloudfour.storeservice.client.UserClient;
 import com.example.cloudfour.storeservice.domain.store.converter.StoreConverter;
 import com.example.cloudfour.storeservice.domain.store.dto.StoreResponseDTO;
 import com.example.cloudfour.storeservice.domain.store.entity.Store;
@@ -21,7 +22,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,8 +34,7 @@ public class StoreQueryService {
 
     private final StoreSearchRepository storeMongoRepository;
     private final StoreRepository query;
-    private final RestTemplate rt;
-    private static final String BASE = "http://user-service/internal/regions";
+    private final UserClient userClient;
 
     public StoreResponseDTO.StoreCursorListResponseDTO getAllStores(
             LocalDateTime cursor, int size, String keyword, Passport passport
@@ -44,7 +43,7 @@ public class StoreQueryService {
             log.warn("가게 목록 조회 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }
-        RegionResponseDTO findRegion =  rt.getForObject(BASE+"/{userId}",RegionResponseDTO.class,passport.getUserId());
+        RegionResponseDTO findRegion = userClient.getUserRegion(passport.getUserId());
         if(findRegion == null){
             log.warn("존재하지 않는 지역");
             throw new RegionException(RegionErrorCode.NOT_FOUND);
@@ -73,7 +72,7 @@ public class StoreQueryService {
             log.warn("카테고리 별 가게 목록 조회 권한 없음");
             throw new StoreException(StoreErrorCode.UNAUTHORIZED_ACCESS);
         }
-        RegionResponseDTO findRegion =  rt.getForObject(BASE+"/{userId}",RegionResponseDTO.class,passport.getUserId());
+        RegionResponseDTO findRegion = userClient.getUserRegion(passport.getUserId());
         if(findRegion == null){
             log.warn("존재하지 않는 지역");
             throw new RegionException(RegionErrorCode.NOT_FOUND);
