@@ -72,6 +72,8 @@ dependencies {
     implementation("com.querydsl:querydsl-mongodb:${querydslVersion}") {
         exclude group: "org.mongodb", module: "mongo-java-driver"
     }
+
+    implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.kafka:spring-kafka'
