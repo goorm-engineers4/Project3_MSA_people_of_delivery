@@ -2,33 +2,27 @@ package com.example.cloudfour.modulecommon.passport.interceptor;
 
 import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.modulecommon.util.PassportUtil;
+import feign.RequestInterceptor;
+import feign.RequestTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.client.ClientHttpRequestExecution;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 
-import java.io.IOException;
+import java.util.Collection;
 
 @Slf4j
-@Component
 @RequiredArgsConstructor
-public class PassportInterceptor implements ClientHttpRequestInterceptor {
-    
+public class FeignPassportInterceptor implements RequestInterceptor {
     private final PassportUtil passportUtil;
-    
-    @Override
-    public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) 
-            throws IOException {
 
-        String existingPassport = request.getHeaders().getFirst("X-Passport");
-        if (existingPassport != null) {
+    @Override
+    public void apply(RequestTemplate template) {
+        Collection<String> existingPassports = template.headers().get("X-Passport");
+        if (existingPassports != null && !existingPassports.isEmpty()) {
+            String existingPassport = existingPassports.iterator().next();
             log.debug("기존 Passport를 내부 통신에 전달: {}", existingPassport);
-            return execution.execute(request, body);
+            return;
         }
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -36,11 +30,11 @@ public class PassportInterceptor implements ClientHttpRequestInterceptor {
             Passport currentPassport = (Passport) authentication.getPrincipal();
 
             String passportData = passportUtil.serialize(currentPassport);
-            request.getHeaders().add("X-Passport", passportData);
-            
-            log.debug("현재 사용자 Passport를 내부 통신에 전달: userId={}, role={}", 
+            template.header("X-Passport", passportData);
+
+            log.debug("현재 사용자 Passport를 내부 통신에 전달: userId={}, role={}",
                     currentPassport.getUserId(), currentPassport.getRole());
-            return execution.execute(request, body);
+            return;
         }
 
         log.error("내부 통신 시 Passport가 필요합니다");
