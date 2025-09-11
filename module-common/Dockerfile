@@ -7,7 +7,7 @@ COPY gradle ./gradle
 COPY build.gradle settings.gradle ./
 COPY module-common/ ./module-common
 
-RUN ./gradlew :module-common:jar --no-daemon --build-cache
+RUN ./gradlew :module-common:bootJar --no-daemon --build-cache
 
 # 실행 단계
 FROM eclipse-temurin:21-jre-jammy
