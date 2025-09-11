@@ -6,6 +6,7 @@ import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -15,6 +16,9 @@ import java.util.Collection;
 @RequiredArgsConstructor
 public class FeignPassportInterceptor implements RequestInterceptor {
     private final PassportUtil passportUtil;
+    
+    @Value("${spring.application.name:}")
+    private String applicationName;
 
     @Override
     public void apply(RequestTemplate template) {
@@ -49,18 +53,19 @@ public class FeignPassportInterceptor implements RequestInterceptor {
     }
 
     private boolean isPassportNotRequired(String url) {
-        return url.contains("/internal/") || 
-               url.contains("/api/passports/") ||
-               url.contains("/auth/login") ||
-               url.contains("/auth/register") ||
-               url.contains("/auth/refresh") ||
-               url.contains("/auth/email/") ||
-               url.contains("/.well-known/") ||
-               url.contains("/by-email") ||
-               url.contains("/verify-password") ||
-               url.contains("/exists") ||
-               url.contains("/email-verified") ||
-               url.contains("/change-password") ||
-               url.contains("/email-change/");
+        boolean isBasicException = url.contains("/api/passports/") ||
+                                  url.contains("/.well-known/");
+
+        if ("auth-service".equals(applicationName)) {
+            return isBasicException ||
+                   url.contains("/by-email") ||
+                   url.contains("/verify-password") ||
+                   url.contains("/exists") ||
+                   url.contains("/email-verified") ||
+                   url.contains("/change-password") ||
+                   url.contains("/email-change/");
+        }
+        
+        return isBasicException;
     }
 }

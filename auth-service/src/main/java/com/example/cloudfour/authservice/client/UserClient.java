@@ -46,12 +46,10 @@ public class UserClient {
         return res != null && res.exists();
     }
 
-    // 오류
     public void startEmailChange(UUID id, String newEmail) {
         feign.startEmailChange(id, new UserRequestDTO.EmailChangeStartRequestDTO(newEmail));
     }
 
-    // 오류
     public void confirmEmailChange(UUID id, String newEmail) {
         feign.confirmEmailChange(id, new UserRequestDTO.EmailChangeConfirmRequestDTO(newEmail));
     }
