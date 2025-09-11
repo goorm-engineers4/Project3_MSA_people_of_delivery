@@ -1,6 +1,7 @@
 package com.example.cloudfour.authservice.config;
 
 import com.example.cloudfour.modulecommon.passport.filter.InternalPassportFilter;
+import com.example.cloudfour.modulecommon.filter.JwtClaimsAuthFilter;
 import com.example.cloudfour.modulecommon.util.PassportUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +20,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, InternalPassportFilter internalPassportFilter) throws Exception {
+    JwtClaimsAuthFilter jwtClaimsAuthFilter(){
+        return new JwtClaimsAuthFilter();
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http, InternalPassportFilter internalPassportFilter, JwtClaimsAuthFilter jwtClaimsAuthFilter) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -33,6 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/password", "/auth/email/change/**").authenticated()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(.addFilterBefore(internalPassportFilter, UsernamePasswordAuthenticationFilter.class), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(internalPassportFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

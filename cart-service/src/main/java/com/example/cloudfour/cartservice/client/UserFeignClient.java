@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@FeignClient(name="user-service", path = "/internal/users", configuration = FeignConfig.class  )
+@FeignClient(name="user-service", path = "http://user-service.app.svc.cluster.local:80/internal", configuration = FeignConfig.class  )
 public interface UserFeignClient {
 
     @GetMapping("/addresses/{userId}")

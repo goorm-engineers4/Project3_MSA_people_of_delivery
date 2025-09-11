@@ -19,6 +19,7 @@ management:
 spring:
   application:
     name: payment-service
+
   jpa:
     hibernate.ddl-auto: update
     show-sql: true
@@ -63,3 +64,5 @@ kafka:
   topic:
     order-events: order-events
     payment-events: payment-events
+
+

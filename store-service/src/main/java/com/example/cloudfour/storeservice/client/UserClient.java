@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@FeignClient(name="user-service", path = "/internal",configuration = FeignConfig.class)
+@FeignClient(name="user-service", path = "http://user-service.app.svc.cluster.local:80/internal",configuration = FeignConfig.class)
 public interface UserClient {
 
     @GetMapping("/regions/{userId}")

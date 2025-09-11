@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @FeignClient(
         name = "store-service",
-        path = "/internal",
+        path = "http://store-service.app.svc.cluster.local:80/internal",
         configuration = FeignConfig.class
 )
 public interface StoreFeignClient {
