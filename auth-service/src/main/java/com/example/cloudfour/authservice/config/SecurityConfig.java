@@ -39,7 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/password", "/auth/email/change/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(.addFilterBefore(internalPassportFilter, UsernamePasswordAuthenticationFilter.class), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtClaimsAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(internalPassportFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
