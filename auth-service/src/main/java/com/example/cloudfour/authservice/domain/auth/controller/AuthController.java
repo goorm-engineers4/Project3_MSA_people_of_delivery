@@ -6,6 +6,7 @@ import com.example.cloudfour.authservice.domain.auth.dto.AuthRequestDTO;
 import com.example.cloudfour.authservice.domain.auth.dto.AuthResponseDTO;
 import com.example.cloudfour.authservice.domain.auth.service.AuthService;
 import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -67,12 +68,12 @@ public class AuthController {
     }
 
     @PostMapping("/password")
-    @PreAuthorize("isAuthenticated() and authentication.principal.id == #user.id()")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "비밀번호 재설정", description = "비밀번호를 재설정합니다.")
     public CustomResponse<Void> changePassword(
             @Valid @RequestBody AuthRequestDTO.PasswordChangeDto request,
-            @AuthenticationPrincipal CurrentUser user) {
-        authService.changePassword(user.id(), request);
+            @AuthenticationPrincipal Passport passport) {
+        authService.changePassword(passport.getUserId(), request);
         return CustomResponse.onSuccess(null);
     }
 
@@ -91,20 +92,20 @@ public class AuthController {
     }
 
     @PostMapping("/email/change/start")
-    @PreAuthorize("isAuthenticated() and authentication.principal.id == #user.id()")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "이메일 수정", description = "새로 입력된 이메일로 이메일을 수정합니다.")
-    public CustomResponse<Void> startEmailChange(@AuthenticationPrincipal CurrentUser user,
+    public CustomResponse<Void> startEmailChange(@AuthenticationPrincipal Passport passport,
                                                  @Valid @RequestBody AuthRequestDTO.EmailChangeStartRequestDTO req) {
-        authService.startEmailChange(user.id(), req.newEmail());
+        authService.startEmailChange(passport.getUserId(), req.newEmail());
         return CustomResponse.onSuccess(null);
     }
 
     @PostMapping("/email/change/verify")
-    @PreAuthorize("isAuthenticated() and authentication.principal.id == #user.id()")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "수정된 이메일 검증", description = "수정된 이메일의 인증 코드를 검증합니다.")
-    public CustomResponse<Void> verifyEmailChange(@AuthenticationPrincipal CurrentUser user,
+    public CustomResponse<Void> verifyEmailChange(@AuthenticationPrincipal Passport passport,
                                                   @Valid @RequestBody AuthRequestDTO.EmailChangeVerifyRequestDTO req) {
-        authService.verifyEmailChange(user.id(), req.newEmail(), req.code());
+        authService.verifyEmailChange(passport.getUserId(), req.newEmail(), req.code());
         return CustomResponse.onSuccess(null);
     }
 }
