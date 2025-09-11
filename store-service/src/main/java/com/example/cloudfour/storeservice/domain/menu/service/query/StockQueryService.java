@@ -10,8 +10,10 @@ import com.example.cloudfour.storeservice.domain.menu.exception.StockErrorCode;
 import com.example.cloudfour.storeservice.domain.menu.exception.StockException;
 import com.example.cloudfour.storeservice.domain.menu.repository.MenuRepository;
 import com.example.cloudfour.storeservice.domain.menu.repository.StockRepository;
+import com.example.cloudfour.storeservice.domain.menu.service.RedisInventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +25,8 @@ import java.util.UUID;
 public class StockQueryService {
     private final StockRepository stockRepository;
     private final MenuRepository menuRepository;
-    private final org.springframework.data.redis.core.RedisTemplate<String, String> redisTemplate;
-    private final com.example.cloudfour.storeservice.domain.menu.service.RedisInventoryService redisInventoryService;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final RedisInventoryService redisInventoryService;
 
     private static final String INVN_MENU_PREFIX = "invn:menu:";
 

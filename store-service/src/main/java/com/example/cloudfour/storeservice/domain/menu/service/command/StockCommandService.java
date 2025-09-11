@@ -9,6 +9,7 @@ import jakarta.persistence.OptimisticLockException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -28,7 +29,7 @@ import java.util.UUID;
 )
 public class StockCommandService {
     private final StockRepository stockRepository;
-    private final org.springframework.data.redis.core.RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     private static final String INVN_MENU_PREFIX = "invn:menu:";
 
