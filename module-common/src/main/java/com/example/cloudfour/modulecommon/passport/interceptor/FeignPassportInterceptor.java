@@ -25,6 +25,13 @@ public class FeignPassportInterceptor implements RequestInterceptor {
             return;
         }
 
+        String url = template.url();
+        log.debug("FeignPassportInterceptor - 요청 URL: {}", url);
+        if (isPassportNotRequired(url)) {
+            log.debug("Passport가 필요하지 않은 API입니다. URL: {}", url);
+            return;
+        }
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof Passport) {
             Passport currentPassport = (Passport) authentication.getPrincipal();
@@ -39,5 +46,21 @@ public class FeignPassportInterceptor implements RequestInterceptor {
 
         log.error("내부 통신 시 Passport가 필요합니다");
         throw new RuntimeException("내부 통신 시 Passport가 필요합니다");
+    }
+
+    private boolean isPassportNotRequired(String url) {
+        return url.contains("/internal/") || 
+               url.contains("/api/passports/") ||
+               url.contains("/auth/login") ||
+               url.contains("/auth/register") ||
+               url.contains("/auth/refresh") ||
+               url.contains("/auth/email/") ||
+               url.contains("/.well-known/") ||
+               url.contains("/by-email") ||
+               url.contains("/verify-password") ||
+               url.contains("/exists") ||
+               url.contains("/email-verified") ||
+               url.contains("/change-password") ||
+               url.contains("/email-change/");
     }
 }
