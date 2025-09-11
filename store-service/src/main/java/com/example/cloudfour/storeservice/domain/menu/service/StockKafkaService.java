@@ -66,13 +66,12 @@ public class StockKafkaService {
 
     @KafkaListener(topics = "payment-completed")
     public void handlePaymentCompleted(PaymentEvent.PaymentCompletedEvent event) {
+        UUID orderId = event.getOrderId();
+        List<PaymentEvent.PaymentCompletedEvent.OrderItem> item = event.getOrderItems();
         try {
-            UUID orderId = event.getOrderId();
-            List<PaymentEvent.PaymentCompletedEvent.OrderItem> item = event.getOrderItems();
             boolean success = stockCommandService.decreaseListStock(item);
-            redisInventoryService.releaseReservation(orderId);
             if (success) {
-
+                redisInventoryService.releaseReservation(orderId);
                 log.info("재고 차감 성공 - OrderId: {}", orderId);
 
             } else {

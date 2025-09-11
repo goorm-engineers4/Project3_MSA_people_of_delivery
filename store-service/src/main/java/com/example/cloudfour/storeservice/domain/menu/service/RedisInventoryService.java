@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -19,6 +18,7 @@ public class RedisInventoryService {
     private final RedisTemplate<String, String> redisTemplate;
     private final DefaultRedisScript<List> reserveStockScript;
     private final DefaultRedisScript<List> releaseStockScript;
+    private final DefaultRedisScript<List> availabilityScript;
 
     private static final String STOCK_KEY_PREFIX = "invn:menu:";
     private static final String RESERVATION_KEY_PREFIX = "rsrv:menu:";
@@ -33,6 +33,10 @@ public class RedisInventoryService {
         this.releaseStockScript = new DefaultRedisScript<>();
         this.releaseStockScript.setScriptText(getReleaseStockScript());
         this.releaseStockScript.setResultType(List.class);
+
+        this.availabilityScript = new DefaultRedisScript<>();
+        this.availabilityScript.setScriptText(getAvailabilityScript());
+        this.availabilityScript.setResultType(List.class);
     }
 
     public StockResponseDTO.StockReserveResponseDTO reserveStock(UUID menuId, Long quantity, UUID orderId) {
@@ -84,43 +88,61 @@ public class RedisInventoryService {
         String orderReservationKey = ORDER_RESERVATION_KEY_PREFIX + orderId;
 
         try {
-            Map<Object, Object> reservation = redisTemplate.opsForHash().entries(orderReservationKey);
-            if (reservation.isEmpty()) {
-                log.warn("주문ID에 대한 예약이 없음: {}", orderId);
-                return;
-            }
-
-            String menuIdStr = (String) reservation.get("menuId");
-            String quantityStr = (String) reservation.get("quantity");
-            
-            if (menuIdStr == null || quantityStr == null) {
-                log.error("잘못된 예약 데이터 - OrderId: {}", orderId);
-                return;
-            }
-
-            UUID menuId = UUID.fromString(menuIdStr);
-            Long quantity = Long.valueOf(quantityStr);
-
-            String stockKey = STOCK_KEY_PREFIX + menuId;
-            String reservationKey = RESERVATION_KEY_PREFIX + menuId;
-
             @SuppressWarnings("unchecked")
             List<Object> result = redisTemplate.execute(
                     releaseStockScript,
-                    Arrays.asList(stockKey, reservationKey, orderReservationKey),
-                    quantity.toString(),
+                    Arrays.asList(orderReservationKey),
                     orderId.toString()
             );
 
             int code = ((Number) result.get(0)).intValue();
             if (code == 0) {
-                log.info("재고 예약 해제 성공 - OrderId: {}, MenuId: {}, Quantity: {}",
-                        orderId, menuId, quantity);
+                log.info("재고 예약 해제 성공 - OrderId: {}", orderId);
             } else {
                 log.error("재고 예약 해제 실패 - OrderId: {}, Code: {}", orderId, code);
             }
         } catch (Exception e) {
             log.error("예약 해제 중 오류 발생 - OrderId: {}", orderId, e);
+        }
+    }
+
+
+    public StockResponseDTO.StockAvailabilityResponseDTO getAvailability(UUID menuId) {
+        String stockKey = STOCK_KEY_PREFIX + menuId;
+        String reservationKey = RESERVATION_KEY_PREFIX + menuId;
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object> result = redisTemplate.execute(
+                    availabilityScript,
+                    Arrays.asList(stockKey, reservationKey)
+            );
+            int code = ((Number) result.get(0)).intValue();
+            if (code == -1) {
+                log.warn("메뉴를 찾을 수 없음(가용 조회) - MenuId: {}", menuId);
+                return StockResponseDTO.StockAvailabilityResponseDTO.builder()
+                        .menuId(menuId)
+                        .baseQuantity(null)
+                        .availableQuantity(null)
+                        .reservedQuantity(null)
+                        .build();
+            }
+            Long available = ((Number) result.get(1)).longValue();
+            Long base = ((Number) result.get(2)).longValue();
+            Long reserved = ((Number) result.get(3)).longValue();
+            return StockResponseDTO.StockAvailabilityResponseDTO.builder()
+                    .menuId(menuId)
+                    .baseQuantity(base)
+                    .availableQuantity(available)
+                    .reservedQuantity(reserved)
+                    .build();
+        } catch (Exception e) {
+            log.error("Redis 가용 재고 조회 오류 - MenuId: {}", menuId, e);
+            return StockResponseDTO.StockAvailabilityResponseDTO.builder()
+                    .menuId(menuId)
+                    .baseQuantity(null)
+                    .availableQuantity(null)
+                    .reservedQuantity(null)
+                    .build();
         }
     }
 
@@ -135,7 +157,7 @@ public class RedisInventoryService {
         
             -- 현재 재고 확인
             local currentStock = redis.call('GET', stockKey)
-            if currentStock == false then
+            if not currentStock then
                 return {-1, "MENU_NOT_FOUND"}
             end
         
@@ -155,19 +177,18 @@ public class RedisInventoryService {
                 return {-2, "INSUFFICIENT_STOCK", availableStock}
             end
             
-            -- 예약 생성
-            redis.call('HSET', reservationKey, orderId, quantity)
+            -- 메뉴별 예약에 주문 수량 누적
+            redis.call('HINCRBY', reservationKey, orderId, quantity)
             redis.call('EXPIRE', reservationKey, 7200)
             
-            -- menuId를 stockKey에서 추출 (수정된 prefix 반영)
+            -- menuId를 stockKey에서 추출
             local menuId = string.match(stockKey, 'invn:menu:(.+)')
             
-            -- 주문별 예약 정보 저장
-            redis.call('HMSET', orderReservationKey, 
-                'menuId', menuId,
-                'quantity', quantity,
-                'expireTime', expireTime)
+            -- 주문별 아이템 해시에 메뉴ID를 필드로 수량 누적
+            redis.call('HINCRBY', orderReservationKey, menuId, quantity)
+            redis.call('HSET', orderReservationKey .. ':meta', 'expireTime', expireTime)
             redis.call('EXPIRE', orderReservationKey, 300)
+            redis.call('EXPIRE', orderReservationKey .. ':meta', 300)
             
             local newAvailableStock = availableStock - quantity
             return {0, "SUCCESS", newAvailableStock}
@@ -176,27 +197,54 @@ public class RedisInventoryService {
 
     private String getReleaseStockScript() {
         return """
+            -- KEYS[1] = order:rsrv:<orderId>
+            -- ARGV[1] = orderId
+            local orderReservationKey = KEYS[1]
+            local orderId = ARGV[1]
+            
+            local orderItems = redis.call('HGETALL', orderReservationKey)
+            if #orderItems == 0 then
+              return {0, "NO_RESERVATION"}
+            end
+            
+            for i = 1, #orderItems, 2 do
+              local menuId = orderItems[i]
+              local qty = tonumber(orderItems[i+1])
+              local reservationKey = 'rsrv:menu:' .. menuId
+              local current = redis.call('HGET', reservationKey, orderId)
+              if current then
+                local remain = tonumber(current) - qty
+                if remain > 0 then
+                  redis.call('HSET', reservationKey, orderId, remain)
+                else
+                  redis.call('HDEL', reservationKey, orderId)
+                end
+              end
+            end
+            
+            redis.call('DEL', orderReservationKey)
+            return {0, "SUCCESS"}
+        """;
+    }
+
+    private String getAvailabilityScript() {
+        return """
+            -- KEYS[1] = invn:menu:<menuId>
+            -- KEYS[2] = rsrv:menu:<menuId>
             local stockKey = KEYS[1]
             local reservationKey = KEYS[2]
-            local orderReservationKey = KEYS[3]
-            local quantity = tonumber(ARGV[1])
-            local orderId = ARGV[2]
-            
-            -- 예약 확인 및 해제
-            local reservedQuantity = redis.call('HGET', reservationKey, orderId)
-            if reservedQuantity == false then
-                return {-1, "RESERVATION_NOT_FOUND"}
+            local current = redis.call('GET', stockKey)
+            if not current then
+                return {-1, 'MENU_NOT_FOUND'}
             end
-            
-            if tonumber(reservedQuantity) ~= quantity then
-                return {-2, "QUANTITY_MISMATCH"}
+            current = tonumber(current)
+            local reserved = 0
+            local entries = redis.call('HGETALL', reservationKey)
+            for i = 2, #entries, 2 do
+                reserved = reserved + tonumber(entries[i])
             end
-            
-            -- 예약 해제
-            redis.call('HDEL', reservationKey, orderId)
-            redis.call('DEL', orderReservationKey)
-            
-            return {0, "SUCCESS"}
+            local available = current - reserved
+            return {0, available, current, reserved}
         """;
     }
 }
