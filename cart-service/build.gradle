@@ -3,7 +3,13 @@ plugins {
     id 'org.springframework.boot'
     id 'io.spring.dependency-management'
 }
+bootJar {
+    archiveFileName = 'app.jar'
+}
 
+jar {
+    enabled = false
+}
 dependencies {
     implementation project(':module-common')
 
