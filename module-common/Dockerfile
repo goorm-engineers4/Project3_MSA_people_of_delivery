@@ -7,6 +7,7 @@ COPY gradle ./gradle
 COPY build.gradle settings.gradle ./
 COPY module-common/ ./module-common
 
+# 실행 가능한 bootJar 생성
 RUN ./gradlew :module-common:bootJar --no-daemon --build-cache
 
 # 실행 단계
