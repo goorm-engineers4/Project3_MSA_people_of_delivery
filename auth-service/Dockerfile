@@ -7,7 +7,7 @@ COPY build.gradle settings.gradle ./
 COPY module-common/ ./module-common
 COPY auth-service/ ./auth-service
 
-RUN ./gradlew :auth-service:bootJar --no-daemon --build-cache
+RUN ./gradlew :auth-service:jar --no-daemon --build-cache
 
 # 실행 단계
 FROM eclipse-temurin:21-jre-jammy
