@@ -1,7 +1,7 @@
 package com.example.cloudfour.authservice.config;
 
-import com.example.cloudfour.modulecommon.filter.JwtClaimsAuthFilter;
 import com.example.cloudfour.modulecommon.passport.filter.InternalPassportFilter;
+import com.example.cloudfour.modulecommon.filter.JwtClaimsAuthFilter;
 import com.example.cloudfour.modulecommon.util.PassportUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +20,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtClaimsAuthFilter jwtClaimsAuthFilter() {
+    JwtClaimsAuthFilter jwtClaimsAuthFilter(){
         return new JwtClaimsAuthFilter();
     }
 
@@ -39,7 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/password", "/auth/email/change/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtClaimsAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(.addFilterBefore(internalPassportFilter, UsernamePasswordAuthenticationFilter.class), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(internalPassportFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
