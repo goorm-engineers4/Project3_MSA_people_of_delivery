@@ -72,7 +72,7 @@ spring:
             - id: auth-service-public
               uri: lb://auth-service
               predicates:
-                - Path=/api/auth-service/auth/login, /api/auth-service/auth/register/**, /api/auth-service/auth/refresh, /api/auth-service/auth/email/**, /api/auth-service/.well-known/**, /api/auth-service/api/passports/**, /api/auth-service/internal/**
+                - Path=/api/auth-service/auth/login, /api/auth-service/auth/register/**, /api/auth-service/auth/refresh, /api/auth-service/auth/email/send, /api/auth-service/auth/email/verify, /api/auth-service/.well-known/**, /api/auth-service/api/passports/**, /api/auth-service/internal/**
               filters:
                 - RewritePath=/api/auth-service/(?<segment>.*),/${segment}
 
