@@ -1,6 +1,7 @@
 plugins {
-    id 'java-library'
+    id 'java'
     id 'io.spring.dependency-management'
+    id 'java-library'
 }
 
 
@@ -8,9 +9,7 @@ jar {
     enabled = true   // 라이브러리 jar만 만들면 됨
 }
 
-bootJar {
-    enabled = false  // 실행 JAR 필요 없음
-}
+
 
 dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
