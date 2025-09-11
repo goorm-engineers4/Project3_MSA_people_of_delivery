@@ -12,6 +12,8 @@ public class MenuCommonResponseDTO {
     private String name;
     private Integer price;
     private Long quantity;
+    private Long availableQuantity;
+    private Long reservedQuantity;
     private String menuPicture;
     private MenuStatus status;
     private String category;

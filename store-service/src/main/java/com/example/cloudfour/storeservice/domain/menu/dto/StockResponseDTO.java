@@ -30,4 +30,13 @@ public class StockResponseDTO {
         private Long quantity;
     }
 
+    @Getter
+    @Builder
+    public static class StockAvailabilityResponseDTO {
+        private UUID stockId;
+        private UUID menuId;
+        private Long baseQuantity;
+        private Long availableQuantity;
+        private Long reservedQuantity;
+    }
 }

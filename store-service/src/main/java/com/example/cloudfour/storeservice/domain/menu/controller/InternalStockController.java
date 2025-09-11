@@ -26,6 +26,11 @@ public class InternalStockController {
         return stockQueryService.getMenuStock(menuId);
     }
 
+    @GetMapping("/menus/{menuId}/stock/availability")
+    public StockResponseDTO.StockAvailabilityResponseDTO getMenuStockAvailability(@PathVariable("menuId") UUID menuId) {
+        return stockQueryService.getMenuStockAvailability(menuId);
+    }
+
     @PostMapping("/menus/stock/{stockId}/decrease")
     public void decreaseStock(
             @PathVariable("stockId") UUID stockId,
