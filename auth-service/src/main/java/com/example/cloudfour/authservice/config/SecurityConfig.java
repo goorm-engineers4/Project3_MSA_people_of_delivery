@@ -1,6 +1,7 @@
 package com.example.cloudfour.authservice.config;
 
 import com.example.cloudfour.modulecommon.passport.filter.InternalPassportFilter;
+import com.example.cloudfour.modulecommon.util.PassportUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -13,7 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
     @Bean
-    InternalPassportFilter internalPassportFilter(com.example.cloudfour.modulecommon.util.PassportUtil passportUtil) {
+    InternalPassportFilter internalPassportFilter(PassportUtil passportUtil) {
         return new InternalPassportFilter(passportUtil);
     }
 
