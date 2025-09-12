@@ -29,6 +29,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation "org.springframework.cloud:spring-cloud-starter-openfeign"
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
 
     // Querydsl 추가 - 버전을 명시적으로 지정
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
