@@ -1,6 +1,5 @@
 package com.example.cloudfour.paymentservice.domain.payment.apiclient;
 
-import com.example.cloudfour.paymentservice.config.FeignConfig;
 import com.example.cloudfour.paymentservice.config.TossFeignConfig;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
