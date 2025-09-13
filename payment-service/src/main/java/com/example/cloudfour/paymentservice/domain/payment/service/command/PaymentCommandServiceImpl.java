@@ -170,12 +170,12 @@ public class PaymentCommandServiceImpl implements PaymentCommandService {
             idempotencyService.setPaymentCancelIdempotency(history);
             paymentHistoryRepository.save(history);
 
-            try {
-                orderClient.updateOrderStatus(orderId.toString(), "주문취소");
-                log.info("주문 상태 업데이트 완료: orderId={}, status=주문취소", orderId);
-            } catch (Exception e) {
-                log.error("주문 상태 업데이트 실패하지만 결제 취소는 성공: orderId={}, error={}", orderId, e.getMessage());
-            }
+//            try {
+//                orderClient.updateOrderStatus(orderId.toString(), "주문취소");
+//                log.info("주문 상태 업데이트 완료: orderId={}, status=주문취소", orderId);
+//            } catch (Exception e) {
+//                log.error("주문 상태 업데이트 실패하지만 결제 취소는 성공: orderId={}, error={}", orderId, e.getMessage());
+//            }
 
             log.info("결제 취소 완료: paymentId={}, paymentKey={}", payment.getId(), payment.getPaymentKey());
             return paymentConverter.toCancelResponse(payment, history);
