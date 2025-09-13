@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
         configuration = TossFeignConfig.class  // Passport 인터셉터 적용
 )
 public interface TossFeginClient {
-    @PostMapping("/v1/payments/{paymentKey}")
+
+    @PostMapping("/v1/payments/confirm")
     TossApiClient.TossApproveResponse approvePayment(
-            @PathVariable("paymentKey") String paymentKey,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody PaymentRequestDTO.TossApproveRequest body
     );
