@@ -63,7 +63,8 @@ public class FeignPassportInterceptor implements RequestInterceptor {
                    url.contains("/exists") ||
                    url.contains("/email-verified") ||
                    url.contains("/change-password") ||
-                   url.contains("/email-change/");
+                   url.contains("/email-change/") ||
+                    url.equals("/");
         }
         
         return isBasicException;
