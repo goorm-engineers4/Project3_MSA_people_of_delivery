@@ -48,6 +48,12 @@ spring:
   cloud:
     config:
       enabled: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: order-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
 
 passport:
   secret-key: ${PASSPORT_SECRET}
@@ -61,26 +67,18 @@ passport:
     default-produces-media-type: application/json
 
 kafka:
-  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
-  producer:
-    key-serializer: org.apache.kafka.common.serialization.StringSerializer
-    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-    acks: all
-    retries: 3
-    batch-size: 16384
-    linger-ms: 10
-    buffer-memory: 33554432
-  consumer:
-    group-id: order-service-group
-    auto-offset-reset: earliest
-    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-    enable-auto-commit: false
-    properties:
-      spring.json.trusted.packages: "com.example.cloudfour.paymentservice.domain.payment.event,com.example.cloudfour.cartservice.event"
-  topic:
-    order-events: order-events
-    payment-events: payment-events
+  topics:
+    orderEvents: order.events.v1
+    orderCommands: order.commands.v1
+    paymentEvents: payment.events.v1
+
+app:
+  eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
+  outbox:
+    enabled: true
+    publisherEnabled: ${OUTBOX_PUBLISHER_ENABLED:true}
+  saga:
+    enabled: true
 
 logging:
   level:
