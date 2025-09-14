@@ -3,6 +3,8 @@ package com.example.cloudfour.storeservice.domain.menu.service.event;
 import com.example.cloudfour.modulecommon.messaging.inventory.InventoryEvents;
 import com.example.cloudfour.modulecommon.outbox.service.OutboxService;
 import com.example.cloudfour.storeservice.domain.menu.converter.InventoryEventConverter;
+import com.example.cloudfour.storeservice.domain.menu.exception.StockException;
+import com.example.cloudfour.storeservice.domain.menu.exception.StockErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,7 +44,7 @@ public class InventoryEventService {
         } catch (Exception e) {
             log.error("InventoryReserved 이벤트 발행 실패: orderId={}, error={}", 
                     orderId, e.getMessage(), e);
-            throw new RuntimeException("InventoryReserved 이벤트 발행 실패", e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }
     
@@ -66,7 +68,7 @@ public class InventoryEventService {
         } catch (Exception e) {
             log.error("InventoryReservationFailed 이벤트 발행 실패: orderId={}, error={}", 
                     orderId, e.getMessage(), e);
-            throw new RuntimeException("InventoryReservationFailed 이벤트 발행 실패", e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }
     
@@ -90,7 +92,7 @@ public class InventoryEventService {
         } catch (Exception e) {
             log.error("InventoryCommitted 이벤트 발행 실패: orderId={}, error={}", 
                     orderId, e.getMessage(), e);
-            throw new RuntimeException("InventoryCommitted 이벤트 발행 실패", e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }
     
@@ -115,7 +117,7 @@ public class InventoryEventService {
         } catch (Exception e) {
             log.error("InventoryCommitFailed 이벤트 발행 실패: orderId={}, error={}", 
                     orderId, e.getMessage(), e);
-            throw new RuntimeException("InventoryCommitFailed 이벤트 발행 실패", e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }
 }

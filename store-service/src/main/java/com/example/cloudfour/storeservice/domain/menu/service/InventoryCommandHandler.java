@@ -10,6 +10,8 @@ import com.example.cloudfour.storeservice.domain.menu.service.command.StockComma
 import com.example.cloudfour.storeservice.domain.menu.service.RedisInventoryService;
 import com.example.cloudfour.storeservice.domain.menu.service.event.InventoryEventService;
 import com.example.cloudfour.storeservice.domain.menu.dto.PaymentEvent;
+import com.example.cloudfour.storeservice.domain.menu.exception.StockException;
+import com.example.cloudfour.storeservice.domain.menu.exception.StockErrorCode;
 import com.example.cloudfour.storeservice.domain.menu.repository.MenuRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -180,7 +182,7 @@ public class InventoryCommandHandler {
             
         } catch (Exception e) {
             log.error("재고 예약 처리 중 오류: orderId={}, error={}", command.getOrderId(), e.getMessage(), e);
-            throw new RuntimeException("재고 예약 처리 실패", e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }
     
@@ -194,7 +196,7 @@ public class InventoryCommandHandler {
             
         } catch (Exception e) {
             log.error("재고 해제 처리 중 오류: orderId={}, error={}", command.getOrderId(), e.getMessage(), e);
-            throw new RuntimeException("재고 해제 처리 실패", e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }
     
@@ -244,7 +246,7 @@ public class InventoryCommandHandler {
             
         } catch (Exception e) {
             log.error("재고 commit 처리 중 오류: event={}, error={}", event, e.getMessage(), e);
-            throw new RuntimeException("재고 commit 처리 실패", e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }
     

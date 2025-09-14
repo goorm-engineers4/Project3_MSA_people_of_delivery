@@ -2,6 +2,8 @@ package com.example.cloudfour.cartservice.domain.order.service.event;
 
 import com.example.cloudfour.cartservice.domain.order.converter.OrderEventConverter;
 import com.example.cloudfour.cartservice.domain.order.entity.Order;
+import com.example.cloudfour.cartservice.domain.order.exception.OrderException;
+import com.example.cloudfour.cartservice.domain.order.exception.OrderErrorCode;
 import com.example.cloudfour.modulecommon.messaging.order.OrderEvents;
 import com.example.cloudfour.modulecommon.outbox.service.OutboxService;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +42,7 @@ public class OrderEventService {
         } catch (Exception e) {
             log.error("주문 생성 이벤트 저장 실패: orderId={}, error={}", 
                     order.getId(), e.getMessage(), e);
-            throw new RuntimeException("주문 생성 이벤트 저장 실패", e);
+            throw new OrderException(OrderErrorCode.INTERNAL_ERROR);
         }
     }
 
@@ -63,7 +65,7 @@ public class OrderEventService {
         } catch (Exception e) {
             log.error("주문 승인 이벤트 저장 실패: orderId={}, error={}", 
                     order.getId(), e.getMessage(), e);
-            throw new RuntimeException("주문 승인 이벤트 저장 실패", e);
+            throw new OrderException(OrderErrorCode.INTERNAL_ERROR);
         }
     }
 
@@ -86,7 +88,7 @@ public class OrderEventService {
         } catch (Exception e) {
             log.error("주문 취소 이벤트 저장 실패: orderId={}, error={}", 
                     order.getId(), e.getMessage(), e);
-            throw new RuntimeException("주문 취소 이벤트 저장 실패", e);
+            throw new OrderException(OrderErrorCode.INTERNAL_ERROR);
         }
     }
 
@@ -109,7 +111,7 @@ public class OrderEventService {
         } catch (Exception e) {
             log.error("주문 실패 이벤트 저장 실패: orderId={}, error={}", 
                     order.getId(), e.getMessage(), e);
-            throw new RuntimeException("주문 실패 이벤트 저장 실패", e);
+            throw new OrderException(OrderErrorCode.INTERNAL_ERROR);
         }
     }
 }

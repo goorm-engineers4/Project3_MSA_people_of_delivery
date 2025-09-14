@@ -10,6 +10,8 @@ import com.example.cloudfour.modulecommon.schedule.ScheduledTaskService;
 import com.example.cloudfour.paymentservice.domain.payment.converter.PaymentEventConverter;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
 import com.example.cloudfour.paymentservice.domain.payment.entity.Payment;
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentException;
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentErrorCode;
 import com.example.cloudfour.paymentservice.domain.payment.repository.PaymentRepository;
 import com.example.cloudfour.paymentservice.domain.payment.service.command.PaymentCommandService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -165,7 +167,7 @@ public class PaymentCommandHandler {
             return objectMapper.convertValue(payload, PaymentCommands.CreatePayment.class);
         } catch (Exception e) {
             log.error("LinkedHashMap을 CreatePayment로 변환 실패: error={}", e.getMessage(), e);
-            throw new RuntimeException("커맨드 변환 실패", e);
+            throw new PaymentException(PaymentErrorCode.INVALID_INPUT);
         }
     }
 }

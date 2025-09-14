@@ -2,6 +2,8 @@ package com.example.cloudfour.paymentservice.domain.payment.service.event;
 
 import com.example.cloudfour.paymentservice.domain.payment.converter.PaymentEventConverter;
 import com.example.cloudfour.paymentservice.domain.payment.entity.Payment;
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentException;
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentErrorCode;
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
 import com.example.cloudfour.modulecommon.outbox.service.OutboxService;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +47,7 @@ public class PaymentEventService {
         } catch (Exception e) {
             log.error("PaymentCreated 이벤트 발행 실패: orderId={}, error={}", 
                     payment.getOrderId(), e.getMessage(), e);
-            throw new RuntimeException("PaymentCreated 이벤트 발행 실패", e);
+            throw new PaymentException(PaymentErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
     
@@ -74,7 +76,7 @@ public class PaymentEventService {
         } catch (Exception e) {
             log.error("PaymentCancelled 이벤트 발행 실패: orderId={}, error={}", 
                     payment.getOrderId(), e.getMessage(), e);
-            throw new RuntimeException("PaymentCancelled 이벤트 발행 실패", e);
+            throw new PaymentException(PaymentErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 }

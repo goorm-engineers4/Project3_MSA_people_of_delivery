@@ -127,7 +127,7 @@ public class PaymentCommandServiceImpl implements PaymentCommandService {
 
             paymentHistoryRepository.save(failedHistory);
 
-            throw new RuntimeException("결제 승인 실패", e);
+            throw new PaymentException(PaymentErrorCode.PAYMENT_APPROVAL_FAILED);
         }
     }
 
@@ -182,7 +182,7 @@ public class PaymentCommandServiceImpl implements PaymentCommandService {
 
             paymentHistoryRepository.save(failedHistory);
 
-            throw new RuntimeException("결제 취소 실패", e);
+            throw new PaymentException(PaymentErrorCode.PAYMENT_CANCEL_FAILED);
         }
     }
 
@@ -223,7 +223,7 @@ public class PaymentCommandServiceImpl implements PaymentCommandService {
             
         } catch (Exception e) {
             log.error("웹훅 처리 실패: payload={}, error={}", payload, e.getMessage(), e);
-            throw new RuntimeException("웹훅 처리 실패", e);
+            throw new PaymentException(PaymentErrorCode.WEBHOOK_PROCESSING_FAILED);
         }
     }
 }

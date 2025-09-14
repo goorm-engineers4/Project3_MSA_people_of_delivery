@@ -1,5 +1,7 @@
 package com.example.cloudfour.paymentservice.domain.payment.service;
 
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentException;
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -31,7 +33,7 @@ public class PaymentCacheService {
                     paymentKey.substring(Math.max(0, paymentKey.length()-4)));
         } catch (Exception e) {
             log.error("결제 매핑 저장 실패: orderId={}, error={}", orderId, e.getMessage(), e);
-            throw new RuntimeException("결제 매핑 저장 실패", e);
+            throw new PaymentException(PaymentErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 

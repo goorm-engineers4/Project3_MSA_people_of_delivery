@@ -1,6 +1,8 @@
 package com.example.cloudfour.paymentservice.domain.payment.apiclient;
 
 import com.example.cloudfour.paymentservice.commondto.OrderResponseDTO;
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentException;
+import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentErrorCode;
 // import com.example.cloudfour.paymentservice.domain.payment.dto.OrderStatusUpdateRequestDTO; // 이벤트로 처리됨
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +27,7 @@ public class OrderClient {
             return order;
         } catch (Exception e) {
             log.error("주문 정보 조회 실패: orderId={}, userId={}, error={}", orderId, userId, e.getMessage());
-            throw new RuntimeException("주문 정보 조회에 실패했습니다: " + e.getMessage());
+            throw new PaymentException(PaymentErrorCode.ORDER_NOT_FOUND);
         }
     }
 }
