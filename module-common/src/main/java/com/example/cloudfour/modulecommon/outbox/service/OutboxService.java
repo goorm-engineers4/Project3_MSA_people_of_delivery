@@ -1,11 +1,15 @@
 package com.example.cloudfour.modulecommon.outbox.service;
 
 import com.example.cloudfour.modulecommon.outbox.entity.OutboxEvent;
+import com.example.cloudfour.modulecommon.outbox.enums.EventStatus;
+import com.example.cloudfour.modulecommon.outbox.event.OutboxEventReadyToPublish;
 import com.example.cloudfour.modulecommon.outbox.repository.OutboxEventRepository;
+import jakarta.persistence.EntityManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,13 +23,15 @@ public class OutboxService {
     
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
+    private final EntityManager entityManager;
     
     @Transactional
     public void saveEvent(String aggregateId, String aggregateType, String eventType, 
                          Object eventData, String topic, String key) {
         try {
             String eventDataJson = objectMapper.writeValueAsString(eventData);
-            
+
             OutboxEvent outboxEvent = OutboxEvent.builder()
                     .aggregateId(aggregateId)
                     .aggregateType(aggregateType)
@@ -33,12 +39,28 @@ public class OutboxService {
                     .eventData(eventDataJson)
                     .topic(topic)
                     .key(key)
+                    .status(EventStatus.PENDING)
                     .createdAt(Instant.now())
-                    .status(com.example.cloudfour.modulecommon.outbox.enums.EventStatus.PENDING)
                     .build();
             
-            outboxEventRepository.save(outboxEvent);
-            log.debug("Outbox 이벤트 저장 완료: aggregateId={}, eventType={}", aggregateId, eventType);
+            entityManager.persist(outboxEvent);
+
+            UUID eventId = outboxEvent.getId();
+            
+            log.debug("Outbox 이벤트 저장 완료: aggregateId={}, eventType={}, eventId={}", 
+                    aggregateId, eventType, eventId);
+
+            OutboxEventReadyToPublish readyEvent = new OutboxEventReadyToPublish(
+                    eventId,
+                    aggregateId,
+                    aggregateType,
+                    eventType,
+                    eventDataJson,
+                    topic,
+                    key
+            );
+            
+            eventPublisher.publishEvent(readyEvent);
             
         } catch (JsonProcessingException e) {
             log.error("Outbox 이벤트 JSON 변환 실패: aggregateId={}, eventType={}", aggregateId, eventType, e);
