@@ -1,5 +1,6 @@
 package com.example.cloudfour.modulecommon.messaging;
 
+import com.example.cloudfour.modulecommon.converter.MessageConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -37,10 +38,7 @@ public class MessagePublisher {
                 .attempt(0)
                 .build();
         
-        Envelope<T> envelope = Envelope.<T>builder()
-                .meta(meta)
-                .payload(payload)
-                .build();
+        Envelope<T> envelope = MessageConverter.toEnvelope(meta, payload);
         
         log.info("이벤트 발행: topic={}, key={}, type={}, msgId={}", 
                 topic, key, meta.getType(), meta.getMsgId());
@@ -68,10 +66,7 @@ public class MessagePublisher {
                 .attempt(0)
                 .build();
         
-        Envelope<T> envelope = Envelope.<T>builder()
-                .meta(meta)
-                .payload(payload)
-                .build();
+        Envelope<T> envelope = MessageConverter.toEnvelope(meta, payload);
         
         log.info("커맨드 발행: topic={}, key={}, type={}, msgId={}", 
                 topic, key, meta.getType(), meta.getMsgId());
