@@ -25,11 +25,7 @@
     <!-- prod 환경: 파일 + 콘솔 -->
     <springProfile name="prod">
         <!-- 파일 appender (JSON 포맷 + traceId 포함) -->
-        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>payment-service/logs/${APP_NAME}.log</file>
-            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-                <fileNamePattern>payment-service/${APP_NAME}.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
-            </rollingPolicy>
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
                 <!-- 🟡 traceId JSON 필드로 추가 -->
                 <pattern>{
@@ -45,14 +41,14 @@
             </encoder>
         </appender>
 
-        <!-- 비동기 파일 appender -->
-        <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
-            <appender-ref ref="FILE"/>
+        <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>8192</queueSize>
+            <neverBlock>true</neverBlock>
+            <appender-ref ref="CONSOLE_JSON"/>
         </appender>
 
         <root level="WARN">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_FILE"/>
         </root>
 
         <logger name="com.example.cloudfour" level="WARN"/>
