@@ -13,6 +13,19 @@ public class PaymentEvents {
     @Value
     @Builder
     @Jacksonized
+    public static class PaymentCreated {
+        UUID orderId;
+        UUID userId;
+        UUID storeId;
+        BigDecimal amount;
+        String paymentMethod;
+        String paymentStatus;
+        Instant createdAt;
+    }
+    
+    @Value
+    @Builder
+    @Jacksonized
     public static class PaymentAuthorized {
         UUID orderId;
         UUID userId;

@@ -9,6 +9,19 @@ import java.util.UUID;
 
 public class PaymentEventConverter {
 
+    public static PaymentEvents.PaymentCreated createPaymentCreatedEvent(
+            UUID orderId, UUID userId, UUID storeId, Integer amount, String paymentMethod) {
+        return PaymentEvents.PaymentCreated.builder()
+                .orderId(orderId)
+                .userId(userId)
+                .storeId(storeId)
+                .amount(BigDecimal.valueOf(amount))
+                .paymentMethod(paymentMethod)
+                .paymentStatus("PENDING")
+                .createdAt(Instant.now())
+                .build();
+    }
+
     public static PaymentEvents.PaymentAuthorized createPaymentAuthorizedEvent(
             UUID orderId, UUID userId, UUID storeId, String paymentKey, 
             BigDecimal amount, String paymentMethod) {
