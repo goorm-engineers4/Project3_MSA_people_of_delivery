@@ -5,6 +5,7 @@ import com.example.cloudfour.cartservice.commondto.MenuQuantityResponseDTO;
 import com.example.cloudfour.cartservice.commondto.MenuResponseDTO;
 import com.example.cloudfour.cartservice.commondto.StoreResponseDTO;
 import com.example.cloudfour.cartservice.config.FeignConfig;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +21,7 @@ import java.util.UUID;
         path = "/internal",
         configuration = FeignConfig.class
 )
+@CircuitBreaker(name = "store-circuit")
 public interface StoreFeignClient {
     @RequestMapping(method = RequestMethod.HEAD, value = "/stores/exists")
     void checkStoreExists(@RequestParam("storeId") UUID storeId);
