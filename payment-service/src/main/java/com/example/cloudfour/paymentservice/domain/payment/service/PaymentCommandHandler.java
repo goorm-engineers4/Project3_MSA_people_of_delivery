@@ -1,5 +1,6 @@
 package com.example.cloudfour.paymentservice.domain.payment.service;
 
+import com.example.cloudfour.modulecommon.messaging.Envelope;
 import com.example.cloudfour.modulecommon.messaging.MessageConsumer;
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentCommands;
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
@@ -22,7 +23,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 
 @Slf4j
@@ -43,7 +44,7 @@ public class PaymentCommandHandler {
                    groupId = "payment-command-handler")
     @Transactional
     public void handlePaymentCommand(
-            @Payload com.example.cloudfour.modulecommon.messaging.Envelope<?> envelope,
+            @Payload Envelope<?> envelope,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
             @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
             @Header(KafkaHeaders.OFFSET) long offset,
@@ -59,8 +60,8 @@ public class PaymentCommandHandler {
                 handleCreatePayment((PaymentCommands.CreatePayment) payload, acknowledgment);
             } else if (payload instanceof PaymentCommands.CancelPayment) {
                 handleCancelPayment((PaymentCommands.CancelPayment) payload, acknowledgment);
-            } else if (payload instanceof java.util.LinkedHashMap) {
-                PaymentCommands.CreatePayment command = convertLinkedHashMapToCommand((java.util.LinkedHashMap<?, ?>) payload);
+            } else if (payload instanceof LinkedHashMap) {
+                PaymentCommands.CreatePayment command = convertLinkedHashMapToCommand((LinkedHashMap<?, ?>) payload);
                 handleCreatePayment(command, acknowledgment);
             } else {
                 log.warn("알 수 없는 결제 커맨드 타입: {}", payload.getClass().getSimpleName());
@@ -104,6 +105,30 @@ public class PaymentCommandHandler {
                     .build();
             
             paymentRepository.save(payment);
+
+            try {
+                PaymentEvents.PaymentCreated event = PaymentEventConverter.createPaymentCreatedEvent(
+                    orderId,
+                    userId,
+                    storeId,
+                    amount,
+                    command.getPaymentMethod()
+                );
+                
+                outboxService.saveEvent(
+                    orderId.toString(),
+                    "Payment",
+                    "PaymentCreated",
+                    event,
+                    paymentEventsTopic,
+                    orderId.toString()
+                );
+                
+                log.info("결제 정보 저장 이벤트 발행 완료: orderId={}", orderId);
+                
+            } catch (Exception e) {
+                log.error("결제 정보 저장 이벤트 발행 실패: orderId={}, error={}", orderId, e.getMessage(), e);
+            }
             
             log.info("결제 정보 저장 완료: orderId={}, paymentId={}, amount={}", 
                     orderId, payment.getId(), amount);
@@ -168,7 +193,7 @@ public class PaymentCommandHandler {
         acknowledgment.acknowledge();
     }
     
-    private PaymentCommands.CreatePayment convertLinkedHashMapToCommand(java.util.LinkedHashMap<?, ?> payload) {
+    private PaymentCommands.CreatePayment convertLinkedHashMapToCommand(LinkedHashMap<?, ?> payload) {
         try {
             return objectMapper.convertValue(payload, PaymentCommands.CreatePayment.class);
         } catch (Exception e) {
