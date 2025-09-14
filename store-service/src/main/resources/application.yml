@@ -73,3 +73,26 @@ app:
       
 passport:
   secret-key: ${PASSPORT_SECRET}
+
+feign:
+  circuitbreaker:
+    enabled: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 20
+        failureRateThreshold: 50
+        slowCallRateThreshold: 80
+        slowCallDurationThreshold: 10s
+        minimumNumberOfCalls: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        maxWaitDurationInHalfOpenState: 0
+        waitDurationInOpenState: 10s
+    instances:
+      reservation-service-circuit-breaker:
+        base-config: default
+      user-service:
+        base-config: default
