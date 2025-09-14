@@ -72,6 +72,8 @@ kafka:
     orderCommands: order.commands.v1
     paymentEvents: payment.events.v1
 
+    orderCommandsDLQ: order.commands.dlq.v1
+
 app:
   eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
   outbox:
@@ -83,6 +85,10 @@ logging:
   level:
     org.springframework.cache: DEBUG
     com.example.cloudfour.cartservice.client: DEBUG
+
+order:
+  timeout:
+    minutes: 0.17  # 주문 타임아웃 시간 (분) - 10초(테스트용) 실제로는 10분
 
 
 

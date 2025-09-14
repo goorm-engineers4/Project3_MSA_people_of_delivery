@@ -61,7 +61,8 @@ kafka:
     orderEvents: order.events.v1
     inventoryEvents: inventory.events.v1
 
-# Outbox 설정
+    paymentCommandsDLQ: payment.commands.dlq.v1
+
 app:
   eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
   outbox:

@@ -63,6 +63,9 @@ kafka:
     orderEvents: order.events.v1
     paymentEvents: payment.events.v1
 
+    inventoryCommandsDLQ: inventory.commands.dlq.v1
+    paymentEventsDLQ: payment.events.dlq.v1
+
 app:
   eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
   outbox:
