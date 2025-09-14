@@ -23,6 +23,9 @@ import com.example.cloudfour.cartservice.domain.order.repository.OrderItemOption
 import com.example.cloudfour.cartservice.domain.order.repository.OrderItemRepository;
 import com.example.cloudfour.cartservice.domain.order.repository.OrderRepository;
 import com.example.cloudfour.cartservice.domain.order.service.event.OrderEventService;
+import com.example.cloudfour.modulecommon.schedule.ScheduledTaskService;
+import com.example.cloudfour.modulecommon.schedule.OrderTimeoutHandler;
+import org.springframework.beans.factory.annotation.Value;
 import com.example.cloudfour.modulecommon.dto.Passport;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +47,11 @@ public class OrderCommandService {
     private final StoreClient storeClient;
     private final UserClient userClient;
     private final OrderEventService orderEventService;
+    private final ScheduledTaskService scheduledTaskService;
+    private final OrderTimeoutHandler orderTimeoutHandler;
+    
+    @Value("${order.timeout.minutes:10}")
+    private double orderTimeoutMinutes;
 
 
     public OrderResponseDTO.OrderCreateResponseDTO createOrder(
@@ -73,8 +81,23 @@ public class OrderCommandService {
 
         orderEventService.publishOrderCreated(order);
 
+        scheduleOrderTimeout(order.getId().toString());
+
         log.info("주문 생성 완료 (orderId={}, totalPrice={})", order.getId(), totalPrice);
         return OrderConverter.toOrderCreateResponseDTO(order);
+    }
+
+    private void scheduleOrderTimeout(String orderId) {
+        try {
+            scheduledTaskService.scheduleOrderTimeout(
+                orderId, 
+                orderTimeoutMinutes,
+                () -> orderTimeoutHandler.handleOrderTimeout(orderId)
+            );
+            log.info("주문 타임아웃 스케줄 등록 완료: orderId={}", orderId);
+        } catch (Exception e) {
+            log.error("주문 타임아웃 스케줄 등록 실패: orderId={}, error={}", orderId, e.getMessage(), e);
+        }
     }
 
     public OrderResponseDTO.OrderUpdateResponseDTO updateOrder(

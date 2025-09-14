@@ -2,6 +2,7 @@ package com.example.cloudfour.paymentservice.domain.payment.service;
 
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
 import com.example.cloudfour.modulecommon.outbox.service.OutboxService;
+import com.example.cloudfour.modulecommon.schedule.ScheduledTaskService;
 import com.example.cloudfour.paymentservice.domain.payment.apiclient.OrderClient;
 import com.example.cloudfour.paymentservice.domain.payment.converter.PaymentEventConverter;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
@@ -28,6 +29,7 @@ public class PaymentProcessService {
     private final PaymentCacheService paymentCacheService;
     private final OrderClient orderClient;
     private final OutboxService outboxService;
+    private final ScheduledTaskService scheduledTaskService;
     
     @Value("${kafka.topics.paymentEvents:payment.events.v1}")
     private String paymentEventsTopic;
@@ -186,6 +188,8 @@ public class PaymentProcessService {
                 );
                 
                 log.info("결제 승인 이벤트 발행 완료: orderId={}", orderId);
+
+                cancelOrderTimeout(orderId);
                 
             } catch (Exception e) {
                 log.error("결제 승인 이벤트 발행 실패: orderId={}, error={}", orderId, e.getMessage(), e);
@@ -322,5 +326,14 @@ public class PaymentProcessService {
         private final boolean success;
         private final PaymentResponseDTO.PaymentConfirmResponseDTO response;
         private final PaymentException exception;
+    }
+
+    private void cancelOrderTimeout(String orderId) {
+        try {
+            scheduledTaskService.cancelOrderTimeout(orderId);
+            log.info("주문 타임아웃 스케줄 취소 완료: orderId={}", orderId);
+        } catch (Exception e) {
+            log.error("주문 타임아웃 스케줄 취소 실패: orderId={}, error={}", orderId, e.getMessage(), e);
+        }
     }
 }

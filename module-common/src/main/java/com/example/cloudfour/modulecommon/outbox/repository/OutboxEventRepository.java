@@ -23,4 +23,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
 
     @Query("SELECT e FROM OutboxEvent e WHERE e.aggregateId = :aggregateId AND e.aggregateType = :aggregateType AND e.status = 'PENDING' ORDER BY e.createdAt ASC")
     List<OutboxEvent> findPendingEventsByAggregate(@Param("aggregateId") String aggregateId, @Param("aggregateType") String aggregateType);
+    
+    @Query("SELECT e FROM OutboxEvent e WHERE e.aggregateId = :aggregateId AND e.eventType = :eventType ORDER BY e.createdAt ASC")
+    List<OutboxEvent> findByAggregateIdAndEventType(@Param("aggregateId") String aggregateId, @Param("eventType") String eventType);
 }
