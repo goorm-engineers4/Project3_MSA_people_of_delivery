@@ -66,6 +66,5 @@ app:
   eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
   outbox:
     enabled: true
-    publisherEnabled: ${OUTBOX_PUBLISHER_ENABLED:true}
 
 

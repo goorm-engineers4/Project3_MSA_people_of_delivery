@@ -67,7 +67,6 @@ app:
   eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
   outbox:
     enabled: ${OUTBOX_ENABLED:true}
-    publisherEnabled: ${OUTBOX_PUBLISHER_ENABLED:true}
       
 passport:
   secret-key: ${PASSPORT_SECRET}
