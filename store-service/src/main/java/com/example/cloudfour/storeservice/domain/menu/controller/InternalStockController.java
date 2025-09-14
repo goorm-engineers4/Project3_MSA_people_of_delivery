@@ -28,21 +28,4 @@ public class InternalStockController {
     public StockResponseDTO.StockAvailabilityResponseDTO getMenuStockAvailability(@PathVariable("menuId") UUID menuId) {
         return stockQueryService.getMenuStockAvailability(menuId);
     }
-
-    // Saga 패턴 도입으로 인해 중복된 로직 - 재고 관리는 InventoryCommandHandler에서 처리
-    // @PostMapping("/menus/stock/{stockId}/decrease")
-    // public void decreaseStock(
-    //         @PathVariable("stockId") UUID stockId,
-    //         @RequestParam(name = "quantity") Long quantity
-    // ){
-    //     stockCommandService.decreaseStock(stockId,quantity);
-    // }
-
-    // @PostMapping("/menus/stock/{stockId}/increase")
-    // public void increaseStock(
-    //         @PathVariable("stockId") UUID stockId,
-    //         @RequestParam(name = "quantity") Long quantity
-    // ){
-    //     stockCommandService.increaseStock(stockId,quantity);
-    // }
 }

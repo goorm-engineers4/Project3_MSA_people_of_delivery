@@ -23,11 +23,4 @@ public interface OrderFeignClient {
             @PathVariable("orderId") String orderId,
             @RequestParam("userId") UUID userId
     );
-
-    // 이벤트로 처리됨: Saga에서 OrderApproved/OrderCanceled 이벤트 발행
-    // @PatchMapping("/{orderId}/status")
-    // void updateOrderStatus(
-    //         @PathVariable("orderId") String orderId,
-    //         @RequestBody OrderStatusUpdateRequestDTO request
-    // );
 }
