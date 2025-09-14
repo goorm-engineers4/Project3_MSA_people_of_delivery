@@ -363,6 +363,8 @@ public class InventoryCommandHandler {
     private Object convertLinkedHashMapToPaymentEvent(Map<String, Object> payload, String eventType) {
         try {
             switch (eventType) {
+                case "PaymentCreated":
+                    return objectMapper.convertValue(payload, PaymentEvents.PaymentCreated.class);
                 case "PaymentAuthorized":
                     return objectMapper.convertValue(payload, PaymentEvents.PaymentAuthorized.class);
                 case "PaymentFailed":

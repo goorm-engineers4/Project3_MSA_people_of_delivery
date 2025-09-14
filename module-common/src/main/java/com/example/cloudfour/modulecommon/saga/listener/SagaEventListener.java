@@ -202,7 +202,9 @@ public class SagaEventListener {
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
             
-            if ("PaymentAuthorized".equals(eventType)) {
+            if ("PaymentCreated".equals(eventType)) {
+                handlePaymentCreated(payload, envelope, acknowledgment);
+            } else if ("PaymentAuthorized".equals(eventType)) {
                 handlePaymentAuthorized(payload, envelope, acknowledgment);
             } else if ("PaymentFailed".equals(eventType)) {
                 handlePaymentFailed(payload, envelope, acknowledgment);
@@ -219,6 +221,30 @@ public class SagaEventListener {
             
             log.error("결제 이벤트 처리 실패: error={}", e.getMessage(), e);
             
+            acknowledgment.acknowledge();
+        }
+    }
+    
+    private void handlePaymentCreated(Object payload, Envelope<Object> envelope, Acknowledgment acknowledgment) {
+        try {
+            PaymentEvents.PaymentCreated event;
+            
+            if (payload instanceof LinkedHashMap) {
+                event = objectMapper.convertValue(payload, PaymentEvents.PaymentCreated.class);
+            } else {
+                event = (PaymentEvents.PaymentCreated) payload;
+            }
+            String orderId = event.getOrderId().toString();
+            
+            log.info("결제 정보 생성 이벤트 처리: orderId={}", orderId);
+
+            log.debug("결제 정보가 생성되었습니다: orderId={}, userId={}, storeId={}, amount={}", 
+                    orderId, event.getUserId(), event.getStoreId(), event.getAmount());
+            
+            acknowledgment.acknowledge();
+            
+        } catch (Exception e) {
+            log.error("결제 정보 생성 이벤트 처리 실패: error={}", e.getMessage(), e);
             acknowledgment.acknowledge();
         }
     }
