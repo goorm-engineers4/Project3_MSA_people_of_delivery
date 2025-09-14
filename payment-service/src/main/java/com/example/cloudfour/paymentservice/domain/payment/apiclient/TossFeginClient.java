@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 )
 @CircuitBreaker(name="toss-circuit")
 public interface TossFeginClient {
-    @PostMapping("/v1/payments/{paymentKey}")
+
+    @PostMapping("/v1/payments/confirm")
     TossApiClient.TossApproveResponse approvePayment(
-            @PathVariable("paymentKey") String paymentKey,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody PaymentRequestDTO.TossApproveRequest body
     );

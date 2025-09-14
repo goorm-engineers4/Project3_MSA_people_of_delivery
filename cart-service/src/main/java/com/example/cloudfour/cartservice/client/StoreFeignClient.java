@@ -40,10 +40,4 @@ public interface StoreFeignClient {
 
     @GetMapping("/menus/{menuId}/stock")
     MenuQuantityResponseDTO getMenuStock(@PathVariable("menuId") UUID menuId);
-
-    @PostMapping("/menus/stock/{stockId}/decrease")
-    void decreaseStock(@PathVariable("stockId") UUID stockId, @RequestParam("quantity") Long quantity);
-
-    @PostMapping("/menus/stock/{stockId}/increase")
-    void increaseStock(@PathVariable("stockId") UUID stockId, @RequestParam("quantity") Long quantity);
 }

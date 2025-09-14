@@ -25,10 +25,4 @@ public interface OrderFeignClient {
             @PathVariable("orderId") String orderId,
             @RequestParam("userId") UUID userId
     );
-
-    @PatchMapping("/{orderId}/status")
-    void updateOrderStatus(
-            @PathVariable("orderId") String orderId,
-            @RequestBody OrderStatusUpdateRequestDTO request
-    );
 }
