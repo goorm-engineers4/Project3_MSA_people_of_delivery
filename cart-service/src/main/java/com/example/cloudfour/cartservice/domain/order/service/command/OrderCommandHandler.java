@@ -6,6 +6,7 @@ import com.example.cloudfour.cartservice.domain.order.exception.OrderErrorCode;
 import com.example.cloudfour.cartservice.domain.order.exception.OrderException;
 import com.example.cloudfour.cartservice.domain.order.repository.OrderRepository;
 import com.example.cloudfour.cartservice.domain.order.service.event.OrderEventService;
+import com.example.cloudfour.modulecommon.messaging.SagaAwareDLQHandler;
 import com.example.cloudfour.modulecommon.messaging.Envelope;
 import com.example.cloudfour.modulecommon.messaging.MessageConsumer;
 import com.example.cloudfour.modulecommon.messaging.order.OrderCommands;
@@ -32,6 +33,7 @@ public class OrderCommandHandler {
     private final OrderEventService orderEventService;
     private final MessageConsumer messageConsumer;
     private final ObjectMapper objectMapper;
+    private final SagaAwareDLQHandler sagaAwareDLQHandler;
 
     @KafkaListener(topics = "${kafka.topics.orderCommands:order.commands.v1}", 
                    groupId = "order-command-handler")
@@ -69,7 +71,8 @@ public class OrderCommandHandler {
                     envelope.getMeta().getType(), e);
             
             log.error("주문 커맨드 처리 실패: error={}", e.getMessage(), e);
-            acknowledgment.acknowledge();
+
+            sagaAwareDLQHandler.handleSagaFailure(topic, key, envelope, e, acknowledgment);
         }
     }
     
@@ -94,7 +97,7 @@ public class OrderCommandHandler {
         } catch (Exception e) {
             log.error("주문 승인 커맨드 처리 실패: orderId={}, error={}", 
                     command.getOrderId(), e.getMessage(), e);
-            acknowledgment.acknowledge();
+            throw e;
         }
     }
     
@@ -120,7 +123,7 @@ public class OrderCommandHandler {
         } catch (Exception e) {
             log.error("주문 취소 커맨드 처리 실패: orderId={}, error={}", 
                     command.getOrderId(), e.getMessage(), e);
-            acknowledgment.acknowledge();
+            throw e;
         }
     }
     

@@ -1,6 +1,7 @@
 package com.example.cloudfour.modulecommon.saga.listener;
 
 import com.example.cloudfour.modulecommon.converter.SagaDataConverter;
+import com.example.cloudfour.modulecommon.messaging.SagaAwareDLQHandler;
 import com.example.cloudfour.modulecommon.messaging.Envelope;
 import com.example.cloudfour.modulecommon.messaging.MessageConsumer;
 import com.example.cloudfour.modulecommon.messaging.inventory.InventoryEvents;
@@ -13,15 +14,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -38,6 +34,7 @@ public class SagaEventListener {
     private final MessageConsumer messageConsumer;
     private final ObjectMapper objectMapper;
     private final OutboxService outboxService;
+    private final SagaAwareDLQHandler sagaAwareDLQHandler;
 
     @KafkaListener(topics = "${kafka.topics.orderEvents:order.events.v1}", 
                    groupId = "order-saga-orchestrator")
@@ -91,8 +88,8 @@ public class SagaEventListener {
                     envelope.getMeta().getType(), e);
             
             log.error("주문 생성 이벤트 처리 실패: error={}", e.getMessage(), e);
-            
-            acknowledgment.acknowledge();
+
+            handleMessageFailure(topic, key, envelope, e, acknowledgment);
         }
     }
 
@@ -134,8 +131,8 @@ public class SagaEventListener {
                     envelope.getMeta().getType(), e);
             
             log.error("재고 이벤트 처리 실패: error={}", e.getMessage(), e);
-            
-            acknowledgment.acknowledge();
+
+            handleMessageFailure(topic, key, envelope, e, acknowledgment);
         }
     }
     
@@ -220,8 +217,8 @@ public class SagaEventListener {
                     envelope.getMeta().getType(), e);
             
             log.error("결제 이벤트 처리 실패: error={}", e.getMessage(), e);
-            
-            acknowledgment.acknowledge();
+
+            handleMessageFailure(topic, key, envelope, e, acknowledgment);
         }
     }
     
@@ -409,5 +406,10 @@ public class SagaEventListener {
         } catch (Exception e) {
             log.error("OrderCanceled 이벤트 발행 실패: orderId={}, error={}", orderId, e.getMessage(), e);
         }
+    }
+
+    private void handleMessageFailure(String topic, String key, Envelope<Object> envelope, 
+                                    Exception error, Acknowledgment acknowledgment) {
+        sagaAwareDLQHandler.handleSagaFailure(topic, key, envelope, error, acknowledgment);
     }
 }

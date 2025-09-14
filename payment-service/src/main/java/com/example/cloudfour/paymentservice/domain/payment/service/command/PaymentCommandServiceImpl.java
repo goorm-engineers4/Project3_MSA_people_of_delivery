@@ -11,6 +11,7 @@ import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentExce
 import com.example.cloudfour.paymentservice.domain.payment.repository.PaymentHistoryRepository;
 import com.example.cloudfour.paymentservice.domain.payment.repository.PaymentRepository;
 import com.example.cloudfour.paymentservice.domain.payment.service.IdempotencyService;
+import com.example.cloudfour.paymentservice.domain.payment.service.event.PaymentEventService;
 import com.example.cloudfour.paymentservice.domain.payment.apiclient.TossApiClient;
 import com.example.cloudfour.paymentservice.domain.payment.apiclient.UserClient;
 import com.example.cloudfour.paymentservice.domain.payment.apiclient.OrderClient;
@@ -38,6 +39,7 @@ public class PaymentCommandServiceImpl implements PaymentCommandService {
     private final OrderClient orderClient;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
+    private final PaymentEventService paymentEventService;
 
 
     @Override
@@ -184,9 +186,44 @@ public class PaymentCommandServiceImpl implements PaymentCommandService {
         }
     }
 
+    public Payment createPayment(UUID orderId, UUID userId, UUID storeId, Integer amount, String paymentMethod) {
+        log.info("결제 정보 생성 시작: orderId={}, userId={}, storeId={}, amount={}", 
+                orderId, userId, storeId, amount);
+        
+        if (paymentRepository.existsByOrderIdAndUserId(orderId, userId)) {
+            log.info("이미 결제 정보가 존재함: orderId={}, userId={}", orderId, userId);
+            return paymentRepository.findByOrderIdAndUserId(orderId, userId)
+                    .orElseThrow(() -> new RuntimeException("결제 정보를 찾을 수 없습니다"));
+        }
+
+        Payment payment = Payment.builder()
+                .orderId(orderId)
+                .userId(userId)
+                .storeId(storeId)
+                .amount(amount)
+                .paymentMethod(paymentMethod)
+                .paymentStatus(PaymentStatus.PENDING)
+                .build();
+        
+        Payment savedPayment = paymentRepository.save(payment);
+
+        paymentEventService.publishPaymentCreated(savedPayment);
+        
+        log.info("결제 정보 생성 완료: orderId={}, paymentId={}, amount={}", 
+                orderId, savedPayment.getId(), amount);
+        
+        return savedPayment;
+    }
+
     @Override
     public void updateStatusFromWebhook(String payload) {
         log.info("웹훅으로부터 결제 상태 업데이트: payload={}", payload);
-        // TODO: 웹훅 처리 로직 구현
+        try {
+            // TODO: 웹훅 처리 로직 구현
+            
+        } catch (Exception e) {
+            log.error("웹훅 처리 실패: payload={}, error={}", payload, e.getMessage(), e);
+            throw new RuntimeException("웹훅 처리 실패", e);
+        }
     }
 }

@@ -4,11 +4,12 @@ import com.example.cloudfour.modulecommon.messaging.Envelope;
 import com.example.cloudfour.modulecommon.messaging.MessageConsumer;
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentCommands;
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
+import com.example.cloudfour.modulecommon.messaging.SagaAwareDLQHandler;
 import com.example.cloudfour.modulecommon.outbox.service.OutboxService;
+import com.example.cloudfour.modulecommon.schedule.ScheduledTaskService;
 import com.example.cloudfour.paymentservice.domain.payment.converter.PaymentEventConverter;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
 import com.example.cloudfour.paymentservice.domain.payment.entity.Payment;
-import com.example.cloudfour.paymentservice.domain.payment.enums.PaymentStatus;
 import com.example.cloudfour.paymentservice.domain.payment.repository.PaymentRepository;
 import com.example.cloudfour.paymentservice.domain.payment.service.command.PaymentCommandService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,6 +37,8 @@ public class PaymentCommandHandler {
     private final PaymentRepository paymentRepository;
     private final PaymentCommandService paymentCommandService;
     private final ObjectMapper objectMapper;
+    private final SagaAwareDLQHandler sagaAwareDLQHandler;
+    private final ScheduledTaskService scheduledTaskService;
     
     @Value("${kafka.topics.paymentEvents:payment.events.v1}")
     private String paymentEventsTopic;
@@ -75,7 +78,8 @@ public class PaymentCommandHandler {
                     envelope.getMeta().getType(), e);
             
             log.error("결제 커맨드 처리 실패: error={}", e.getMessage(), e);
-            acknowledgment.acknowledge();
+
+            sagaAwareDLQHandler.handleSagaFailure(topic, key, (Envelope<Object>) envelope, e, acknowledgment);
         }
     }
 
@@ -89,46 +93,9 @@ public class PaymentCommandHandler {
                 orderId, userId, storeId, amount);
         
         try {
-            if (paymentRepository.existsByOrderIdAndUserId(orderId, userId)) {
-                log.info("이미 결제 정보가 존재함: orderId={}, userId={}", orderId, userId);
-                acknowledgment.acknowledge();
-                return;
-            }
-
-            Payment payment = Payment.builder()
-                    .orderId(orderId)
-                    .userId(userId)
-                    .storeId(storeId)
-                    .amount(amount)
-                    .paymentMethod(command.getPaymentMethod())
-                    .paymentStatus(PaymentStatus.PENDING)
-                    .build();
-            
-            paymentRepository.save(payment);
-
-            try {
-                PaymentEvents.PaymentCreated event = PaymentEventConverter.createPaymentCreatedEvent(
-                    orderId,
-                    userId,
-                    storeId,
-                    amount,
-                    command.getPaymentMethod()
-                );
-                
-                outboxService.saveEvent(
-                    orderId.toString(),
-                    "Payment",
-                    "PaymentCreated",
-                    event,
-                    paymentEventsTopic,
-                    orderId.toString()
-                );
-                
-                log.info("결제 정보 저장 이벤트 발행 완료: orderId={}", orderId);
-                
-            } catch (Exception e) {
-                log.error("결제 정보 저장 이벤트 발행 실패: orderId={}, error={}", orderId, e.getMessage(), e);
-            }
+            Payment payment = paymentCommandService.createPayment(
+                orderId, userId, storeId, amount, command.getPaymentMethod()
+            );
             
             log.info("결제 정보 저장 완료: orderId={}, paymentId={}, amount={}", 
                     orderId, payment.getId(), amount);
