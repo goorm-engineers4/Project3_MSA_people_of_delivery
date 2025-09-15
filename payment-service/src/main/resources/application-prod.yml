@@ -25,6 +25,7 @@ logging:
 spring:
   application:
     name: payment-service
+
   jpa:
     hibernate.ddl-auto: update
     show-sql: true

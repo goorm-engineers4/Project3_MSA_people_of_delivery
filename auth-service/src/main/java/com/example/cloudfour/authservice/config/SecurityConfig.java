@@ -2,6 +2,7 @@ package com.example.cloudfour.authservice.config;
 
 import com.example.cloudfour.modulecommon.filter.JwtClaimsAuthFilter;
 import com.example.cloudfour.modulecommon.passport.filter.InternalPassportFilter;
+import com.example.cloudfour.modulecommon.filter.JwtClaimsAuthFilter;
 import com.example.cloudfour.modulecommon.util.PassportUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

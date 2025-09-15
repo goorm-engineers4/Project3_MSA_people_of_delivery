@@ -4,6 +4,13 @@ plugins {
     id 'java-library'
 }
 
+
+jar {
+    enabled = true   // 라이브러리 jar만 만들면 됨
+}
+
+
+
 dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

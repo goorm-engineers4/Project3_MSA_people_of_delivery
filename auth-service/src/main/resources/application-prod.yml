@@ -6,7 +6,7 @@ logging:
     org.springframework.cloud.gateway: WARN
     reactor.netty: WARN
     root: WARN
-
+  
 management:
   endpoints:
     web:

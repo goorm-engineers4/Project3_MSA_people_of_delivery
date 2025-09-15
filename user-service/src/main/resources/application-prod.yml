@@ -1,6 +1,5 @@
 server:
   port: 8014
-
 management:
   endpoints:
     web:
@@ -27,6 +26,7 @@ logging:
 spring:
   application:
     name: user-service
+
   jpa:
     hibernate.ddl-auto: update
     show-sql: true
