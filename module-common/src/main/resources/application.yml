@@ -1,3 +1,4 @@
+
 server:
   port: 8011
 
@@ -9,47 +10,66 @@ management:
         include: health,info,prometheus
   endpoint:
     health:
-      show-details: always     # 상세 정보 표시
+      show-details: always
   health:
     db:
-      enabled: false           # DB 체크 비활성화
+      enabled: false
     redis:
       enabled: false
-
 
 spring:
   application:
     name: module-common
 
   jpa:
-    hibernate.ddl-auto: update
+    hibernate:
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         highlight_sql: true
 
-
-  spring:
-    batch:
-      job:
-        enabled: false
-
+  batch:
+    job:
+      enabled: false
 
   datasource:
     url: ${DB_URL}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+
   cloud:
     config:
       enabled: false
 
+kafka:
+  topics:
+    orderEvents: order.events.v1
+    orderCommands: order.commands.v1
+    inventoryEvents: inventory.events.v1
+    inventoryCommands: inventory.commands.v1
+    paymentEvents: payment.events.v1
+    paymentCommands: payment.commands.v1
+    orderEventsDLQ: order.events.dlq.v1
+    orderCommandsDLQ: order.commands.dlq.v1
+    inventoryEventsDLQ: inventory.events.dlq.v1
+    inventoryCommandsDLQ: inventory.commands.dlq.v1
+    paymentEventsDLQ: payment.events.dlq.v1
+    paymentCommandsDLQ: payment.commands.dlq.v1
+
+---
+spring:
   config:
     activate:
       on-profile: msk
+
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: >
+      b-2.goormmskcluster.ngtn58.c2.kafka.ap-northeast-2.amazonaws.com:9098,
+      b-1.goormmskcluster.ngtn58.c2.kafka.ap-northeast-2.amazonaws.com:9098
+
     properties:
       security.protocol: SASL_SSL
       sasl.mechanism: AWS_MSK_IAM
@@ -58,6 +78,7 @@ spring:
       # (선택) 네트워크 튜닝
       request.timeout.ms: 30000
       retry.backoff.ms: 1000
+
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -67,6 +88,7 @@ spring:
       buffer-memory: 33554432
       properties:
         linger.ms: 10
+
     consumer:
       group-id: module-common-group
       auto-offset-reset: earliest
@@ -75,20 +97,3 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
-
-# 앱 전용(토픽 이름) — 기존 키 유지
-kafka:
-  topics:
-    orderEvents: order.events.v1
-    orderCommands: order.commands.v1
-    inventoryEvents: inventory.events.v1
-    inventoryCommands: inventory.commands.v1
-    paymentEvents: payment.events.v1
-    paymentCommands: payment.commands.v1
-
-    orderEventsDLQ: order.events.dlq.v1
-    orderCommandsDLQ: order.commands.dlq.v1
-    inventoryEventsDLQ: inventory.events.dlq.v1
-    inventoryCommandsDLQ: inventory.commands.dlq.v1
-    paymentEventsDLQ: payment.events.dlq.v1
-    paymentCommandsDLQ: payment.commands.dlq.v1
