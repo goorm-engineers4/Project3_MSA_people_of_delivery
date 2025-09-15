@@ -35,9 +35,20 @@ spring:
         format_sql: true
         highlight_sql: true
 
+  springdoc:
+    api-docs:
+      version: openapi_3_1
+      enabled: true
+    enable-spring-security: true
+    default-consumes-media-type: application/json
+    default-produces-media-type: application/json
+
   data:
     mongodb:
       uri: ${MONGO_URI}
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
 
   datasource:
     url: ${DB_URL}
@@ -59,10 +70,39 @@ spring:
     config:
       enabled: false
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: store-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+kafka:
+  topics:
+    inventoryCommands: inventory.commands.v1
+    inventoryEvents: inventory.events.v1
+    orderEvents: order.events.v1
+    paymentEvents: payment.events.v1
+
+    inventoryCommandsDLQ: inventory.commands.dlq.v1
+    paymentEventsDLQ: payment.events.dlq.v1
+
+app:
+  eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
+  outbox:
+    enabled: ${OUTBOX_ENABLED:true}
+
+passport:
+  secret-key: ${PASSPORT_SECRET}
+
+feign:
+  circuitbreaker:
+    enabled: true
 
 resilience4j:
   circuitbreaker:
