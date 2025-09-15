@@ -51,13 +51,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     properties:
-      security.protocol: SASL_SSL
-      sasl.mechanism: AWS_MSK_IAM
-      sasl.jaas.config: "software.amazon.msk.auth.iam.IAMLoginModule required;"
-      sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
-      # (선택) 네트워크 튜닝
-      request.timeout.ms: 30000
-      retry.backoff.ms: 1000
+      security.protocol: PLAINTEXT   # <- 유일한 보안 관련 설정
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
