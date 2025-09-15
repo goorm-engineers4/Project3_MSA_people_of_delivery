@@ -1,0 +1,56 @@
+server:
+  port: 8016
+
+spring:
+  application:
+    name: ai-service
+
+  jpa:
+    hibernate.ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+
+  datasource:
+    url: ${DB_URL}
+    driver-class-name: org.postgresql.Driver
+    #    driver-class-name: org.h2.Driver # 테스트용
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  cloud:
+    config:
+      enabled: false
+
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always     # 상세 정보 표시
+  health:
+    db:
+      enabled: false           # DB 체크 비활성화
+    redis:
+      enabled: false
+
+weather:
+  api:
+    key: ${WEATHER_API_KEY:}
+    url: https://api.openweathermap.org/data/2.5/weather
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:}
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

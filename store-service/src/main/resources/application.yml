@@ -1,0 +1,72 @@
+server:
+  port: 8013
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.mongodb.core.MongoOperations: DEBUG
+
+spring:
+  application:
+    name: store-service
+  jpa:
+    hibernate.ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+  springdoc:
+    api-docs:
+      version: openapi_3_1
+      enabled: true
+    enable-spring-security: true
+    default-consumes-media-type: application/json
+    default-produces-media-type: application/json
+
+  data:
+    mongodb:
+      uri: ${MONGO_URI}
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+  datasource:
+    url: ${LOCAL_DB_URL}
+    driver-class-name: org.postgresql.Driver
+    username: ${LOCAL_DB_USERNAME}
+    password: ${LOCAL_DB_PASSWORD}
+  cloud:
+    config:
+      enabled: false
+
+  kafka:
+    bootstrap-servers: localhost:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: store-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: "com.example.cloudfour.paymentservice.domain.payment.event,com.example.cloudfour.cartservice.event"
+    topic:
+      order-events: order-events
+      payment-events: payment-events
+      
+passport:
+  secret-key: ${PASSPORT_SECRET}
