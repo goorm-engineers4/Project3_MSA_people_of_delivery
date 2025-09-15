@@ -39,6 +39,7 @@ dependencies {
     // Kafka
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.apache.kafka:kafka-clients'
+    implementation 'software.amazon.msk:aws-msk-iam-auth:2.3.2'
 
     // Querydsl 추가 - 버전을 명시적으로 지정
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
