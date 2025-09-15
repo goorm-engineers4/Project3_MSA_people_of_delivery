@@ -3,6 +3,7 @@ server:
 
 logging:
   level:
+    org.apache.kafka.clients.NetworkClient: ERROR
     org.springframework.cloud.gateway: WARN
     reactor.netty: WARN
     root: WARN
