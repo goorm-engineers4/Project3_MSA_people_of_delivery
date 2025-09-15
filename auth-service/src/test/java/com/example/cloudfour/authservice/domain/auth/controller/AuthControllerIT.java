@@ -3,7 +3,7 @@ package com.example.cloudfour.authservice.domain.auth.controller;
 import com.example.cloudfour.authservice.domain.auth.dto.AuthRequestDTO;
 import com.example.cloudfour.authservice.domain.auth.dto.AuthResponseDTO;
 import com.example.cloudfour.authservice.domain.auth.service.AuthService;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,7 +61,7 @@ class AuthControllerIT {
                 .apply(SecurityMockMvcConfigurers.springSecurity(noopFilter))
                 .setCustomArgumentResolvers(
                         new AuthenticationPrincipalArgumentResolver(),
-                        currentUserFallback()
+                        passportFallback()
                 )
                 .build();
     }
@@ -71,12 +71,12 @@ class AuthControllerIT {
         SecurityContextHolder.clearContext();
     }
 
-    private HandlerMethodArgumentResolver currentUserFallback() {
+    private HandlerMethodArgumentResolver passportFallback() {
         return new HandlerMethodArgumentResolver() {
             @Override
             public boolean supportsParameter(MethodParameter parameter) {
                 return parameter.getParameterType().getName()
-                        .equals("com.example.cloudfour.modulecommon.dto.CurrentUser");
+                        .equals("com.example.cloudfour.modulecommon.dto.Passport");
             }
             @Override
             public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
@@ -90,9 +90,9 @@ class AuthControllerIT {
 
     private RequestPostProcessor authPrincipal(UUID id) {
         return request -> {
-            CurrentUser principal = Mockito.mock(CurrentUser.class);
+            Passport principal = Mockito.mock(Passport.class);
 
-            lenient().when(principal.id()).thenReturn(id);
+            lenient().when(principal.getUserId()).thenReturn(id);
 
             var auth = new UsernamePasswordAuthenticationToken(
                     principal, "N/A", java.util.Collections.emptyList());
@@ -105,8 +105,6 @@ class AuthControllerIT {
             return request;
         };
     }
-
-    // -------- Register --------
 
     @Test
     @DisplayName("POST /auth/register/customer: 회원가입 성공")
@@ -143,8 +141,6 @@ class AuthControllerIT {
 
         verify(authService).register(any(AuthRequestDTO.RegisterRequestDTO.class));
     }
-
-    // -------- Login / Refresh / Logout --------
 
     @Test
     @DisplayName("POST /auth/login: 로그인 성공 시 토큰 반환")
@@ -205,8 +201,6 @@ class AuthControllerIT {
         verify(authService).logout("Bearer abc.def.sig");
     }
 
-    // -------- Password --------
-
     @Test
     @DisplayName("POST /auth/password: 인증된 사용자의 비밀번호 변경")
     void change_password_success() throws Exception {
@@ -241,8 +235,6 @@ class AuthControllerIT {
         verifyNoInteractions(authService);
     }
 
-    // -------- Email Verify --------
-
     @Test
     @DisplayName("POST /auth/email/send: 이메일 인증 코드 발송")
     void send_email_code() throws Exception {
@@ -268,8 +260,6 @@ class AuthControllerIT {
 
         verify(authService).verifyEmailCode(any(AuthRequestDTO.EmailVerifyRequestDTO.class));
     }
-
-    // -------- Email Change --------
 
     @Test
     @DisplayName("POST /auth/email/change/start: 인증된 사용자의 이메일 변경 시작")
