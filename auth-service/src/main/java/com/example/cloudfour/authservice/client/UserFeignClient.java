@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@FeignClient(name="user-service", url="http://user-service.app.svc.cluster.local:80/internal/users")
+@FeignClient(name="user-service", path = "/internal/users")
 @CircuitBreaker(name="user-circuit")
 public interface UserFeignClient {
     @GetMapping("/exists")
