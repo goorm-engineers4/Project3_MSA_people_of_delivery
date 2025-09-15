@@ -18,7 +18,7 @@ import java.util.UUID;
 
 @FeignClient(
         name = "store-service",
-        path = "/internal",
+        url="http://store-service.app.svc.cluster.local:80/internal",
         configuration = FeignConfig.class
 )
 @CircuitBreaker(name = "store-circuit")

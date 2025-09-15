@@ -75,6 +75,18 @@ spring:
           writetimeout: 5000
     auth-code-expiration-millis: 1800000
 
+  springdoc:
+    api-docs:
+      version: openapi_3_1
+      enabled: true
+    enable-spring-security: true
+    default-consumes-media-type: application/json
+    default-produces-media-type: application/json
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
 jwt:
   issuer: http://auth-service
   audience: app
@@ -83,6 +95,9 @@ jwt:
   jwks:
     enabled: true
     key-id: auth-key-1
+
+passport:
+  secret-key: ${PASSPORT_SECRET}
 
 resilience4j:
   circuitbreaker:
