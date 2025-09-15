@@ -2,7 +2,7 @@ name: Build, Push & Deploy to ECS
 
 on:
   push:
-    branches: [ develop ]  # develop에 push(PR merge) 시 실행
+    branches: [ cloud ]  # cloud에 push(PR merge) 시 실행
 
 permissions:
   id-token: write    # OIDC용
