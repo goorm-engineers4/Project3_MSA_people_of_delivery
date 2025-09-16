@@ -3,9 +3,9 @@ server:
 
 logging:
   level:
-    org.springframework.cloud.gateway: WARN
-    reactor.netty: WARN
-    root: WARN
+    org.springframework.cloud.gateway: INFO
+    reactor.netty: INFO
+    root: INFO
   
 management:
   endpoints:

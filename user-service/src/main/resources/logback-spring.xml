@@ -47,11 +47,11 @@
             <appender-ref ref="CONSOLE_JSON"/>
         </appender>
 
-        <root level="WARN">
+        <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
 
-        <logger name="com.example.cloudfour" level="WARN"/>
-        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="com.example.cloudfour" level="INFO"/>
+        <logger name="org.springframework.web" level="INFO"/>
     </springProfile>
 </configuration>
