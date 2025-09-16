@@ -42,6 +42,11 @@ spring:
 passport:
   secret-key: ${PASSPORT_SECRET}
 
+# Discord 알림 설정
+alert:
+  discord:
+    webhookUrl: https://discord.com/api/webhooks/1417381784718540811/Qr7V49YIn_7mi0evEdxU51i6BeI0b8HVytOb50RrXarzuN1WI1Z2OXcEdHRpsBJaeF68
+
 toss:
   secret-key: ${TOSS_SECRET}
   webhook-secret: ${TOSS_WEBHOOK_SECRET:webhook_secret_key}
@@ -67,6 +72,12 @@ app:
   eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
   outbox:
     enabled: true
+  dlq:
+    enabled: true
+    monitor:
+      enabled: true
+      alert-threshold: 1  # 1개 이상 발생하면 즉시 알림
+      alert-interval-ms: 60000  # 1분 간격으로 알림
 
 resilience4j:
   circuitbreaker:
@@ -86,4 +97,3 @@ resilience4j:
         base-config: default
       user-service:
         base-config: default
-

@@ -57,6 +57,10 @@ spring:
 passport:
   secret-key: ${PASSPORT_SECRET}
 
+alert:
+  discord:
+    webhookUrl: https://discord.com/api/webhooks/1417381784718540811/Qr7V49YIn_7mi0evEdxU51i6BeI0b8HVytOb50RrXarzuN1WI1Z2OXcEdHRpsBJaeF68
+
   springdoc:
     api-docs:
       version: openapi_3_1
@@ -79,6 +83,15 @@ app:
     enabled: true
   saga:
     enabled: true
+    payment:
+      enabled: false
+  dlq:
+    enabled: true
+    monitor:
+      enabled: true
+      alert-threshold: 1
+      # 필요시 알림 최소 간격(ms) 조절 (기본 30000 = 5분)
+      alert-interval-ms: 300000
 
 logging:
   level:
@@ -107,7 +120,5 @@ resilience4j:
         base-config: default
       user-service:
         base-config: default
-
-
 
 
