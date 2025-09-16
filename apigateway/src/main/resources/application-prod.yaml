@@ -100,6 +100,6 @@ management:
         include: "*"
 
 jwt:
-  jwk-set-uri: http://auth-service.app.svc.cluster.local:80/.well-known/jwks.json
+  jwk-set-uri: http://auth-service.app.svc.cluster.local:8015/.well-known/jwks.json
   issuer: http://auth-service
   audience: app
