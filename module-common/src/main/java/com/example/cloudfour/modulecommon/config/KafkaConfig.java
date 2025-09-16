@@ -98,6 +98,7 @@ public class KafkaConfig {
             new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        factory.getContainerProperties().setSyncCommits(true);
         factory.setCommonErrorHandler(mainErrorHandler());
         return factory;
     }
@@ -119,6 +120,7 @@ public class KafkaConfig {
             new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(dlqConsumerFactory());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        factory.getContainerProperties().setSyncCommits(true);
         factory.setCommonErrorHandler(dlqErrorHandler());
         return factory;
     }
@@ -157,6 +159,7 @@ public class KafkaConfig {
             kafkaTemplate().send(out);
         };
         DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3));
+        handler.setCommitRecovered(true);
         handler.setRetryListeners((record, ex, deliveryAttempt) -> {
             try {
                 var headers = record.headers();
