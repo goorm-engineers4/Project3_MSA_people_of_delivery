@@ -11,109 +11,67 @@ spring:
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
           routes:
-            - id: store-service-openapi
-              uri: lb://store-service
-              predicates:
-                - Path=/api/store-service/v3/api-docs, /api/store-service/swagger-ui/**, /api/store-service/swagger-ui.html
-              filters:
-                - RewritePath=/api/store-service/(?<segment>.*),/${segment}
-
-            - id: auth-service-openapi
+            # Auth-Service (public)
+            - id: auth-service-public
               uri: http://auth-service.app.svc.cluster.local:80
               predicates:
-                - Path=/api/auth-service/v3/api-docs, /api/auth-service/swagger-ui/**, /api/auth-service/swagger-ui.html
+                - Path=/auth/login, /auth/register/**, /auth/refresh, /auth/email/send, /auth/email/verify, /.well-known/**, /api/passports/**, /internal/**
               filters:
-                - RewritePath=/api/auth-service/(?<segment>.*),/${segment}
+                - RewritePath=/(?<segment>.*),/${segment}
 
-            - id: user-service-openapi
-              uri: http://user-service.app.svc.cluster.local:8080
-              predicates:
-                - Path=/api/user-service/v3/api-docs, /api/user-service/swagger-ui/**, /api/user-service/swagger-ui.html
-              filters:
-                - RewritePath=/api/user-service/(?<segment>.*),/${segment}
-
-            - id: store-service-openapi
-              uri: lb://store-service
-              predicates:
-                - Path=/api/store-service/v3/api-docs, /api/store-service/swagger-ui/**, /api/store-service/swagger-ui.html
-              filters:
-                - RewritePath=/api/store-service/(?<segment>.*),/${segment}
-
-            - id: cart-service-openapi
-              uri: lb://cart-service
-              predicates:
-                - Path=/api/cart-service/v3/api-docs, /api/cart-service/swagger-ui/**, /api/cart-service/swagger-ui.html
-              filters:
-                - RewritePath=/api/cart-service/(?<segment>.*),/${segment}
-
-            - id: payment-service-openapi
-              uri: lb://payment-service
-              predicates:
-                - Path=/api/payment-service/v3/api-docs, /api/payment-service/swagger-ui/**, /api/payment-service/swagger-ui.html
-              filters:
-                - RewritePath=/api/payment-service/(?<segment>.*),/${segment}
-
-            - id: ai-service-openapi
-              uri: lb://ai-service
-              predicates:
-                - Path=/api/ai-service/v3/api-docs, /api/ai-service/swagger-ui/**, /api/ai-service/swagger-ui.html
-              filters:
-                - RewritePath=/api/ai-service/(?<segment>.*),/${segment}
-
-            - id: auth-service-public
-              uri: lb://auth-service
-              predicates:
-                - Path=/api/auth-service/auth/login, /api/auth-service/auth/register/**, /api/auth-service/auth/refresh, /api/auth-service/auth/email/send, /api/auth-service/auth/email/verify, /api/auth-service/.well-known/**, /api/auth-service/api/passports/**, /api/auth-service/internal/**
-              filters:
-                - RewritePath=/api/auth-service/(?<segment>.*),/${segment}
-
+            # Auth-Service (secured)
             - id: auth-service-secured
-              uri: lb://auth-service
+              uri: http://auth-service.app.svc.cluster.local:80
               predicates:
-                - Path=/api/auth-service/**
+                - Path=/auth/**
               filters:
                 - AuthFilter
-                - RewritePath=/api/auth-service/(?<segment>.*),/${segment}
+                - RewritePath=/(?<segment>.*),/${segment}
 
+            # User-Service
             - id: user-service
-              uri: lb://user-service
+              uri: http://user-service.app.svc.cluster.local:80
               predicates:
-                - Path=/api/user-service/**
+                - Path=/users/**
               filters:
                 - AuthFilter
-                - RewritePath=/api/user-service/(?<segment>.*),/${segment}
+                - RewritePath=/(?<segment>.*),/${segment}
 
+            # Store-Service
             - id: store-service
-              uri: lb://store-service
+              uri: http://store-service.app.svc.cluster.local:80
               predicates:
-                - Path=/api/store-service/**
+                - Path=/stores/**
               filters:
                 - AuthFilter
-                - RewritePath=/api/store-service/(?<segment>.*),/${segment}
+                - RewritePath=/(?<segment>.*),/${segment}
 
+            # Cart-Service
             - id: cart-service
-              uri: lb://cart-service
+              uri: http://cart-service.app.svc.cluster.local:80
               predicates:
-                - Path=/api/cart-service/**
+                - Path=/cart/**
               filters:
                 - AuthFilter
-                - RewritePath=/api/cart-service/(?<segment>.*),/${segment}
+                - RewritePath=/(?<segment>.*),/${segment}
 
+            # Payment-Service
             - id: payment-service
-              uri: lb://payment-service
+              uri: http://payment-service.app.svc.cluster.local:80
               predicates:
-                - Path=/api/payment-service/**
+                - Path=/payment/**
               filters:
                 - AuthFilter
-                - RewritePath=/api/payment-service/(?<segment>.*),/${segment}
+                - RewritePath=/(?<segment>.*),/${segment}
 
+            # AI-Service
             - id: ai-service
-              uri: lb://ai-service
+              uri: http://ai-service.app.svc.cluster.local:80
               predicates:
-                - Path=/api/ai-service/**
+                - Path=/ai/**
               filters:
                 - AuthFilter
-                - RewritePath=/api/ai-service/(?<segment>.*),/${segment}
+                - RewritePath=/(?<segment>.*),/${segment}
 
 springdoc:
   api-docs:
@@ -123,15 +81,17 @@ springdoc:
     disable-swagger-default-url: true
     urls:
       - name: 인증 서비스
-        url: /api/auth-service/v3/api-docs
+        url: /auth/v3/api-docs
       - name: 회원 서비스
-        url: /api/user-service/v3/api-docs
+        url: /users/v3/api-docs
       - name: 가게 서비스
-        url: /api/store-service/v3/api-docs
+        url: /stores/v3/api-docs
       - name: 주문 서비스
-        url: /api/cart-service/v3/api-docs
+        url: /cart/v3/api-docs
       - name: 결제 서비스
-        url: /api/payment-service/v3/api-docs
+        url: /payment/v3/api-docs
+      - name: AI 서비스
+        url: /ai/v3/api-docs
 
 management:
   endpoints:
@@ -140,6 +100,6 @@ management:
         include: "*"
 
 jwt:
-  jwk-set-uri: http://auth-service.app.svc.cluster.local:8080/.well-known/jwks.json
+  jwk-set-uri: http://auth-service.app.svc.cluster.local:80/.well-known/jwks.json
   issuer: http://auth-service
   audience: app
