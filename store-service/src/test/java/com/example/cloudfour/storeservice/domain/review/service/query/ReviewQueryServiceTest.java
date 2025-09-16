@@ -1,10 +1,10 @@
 package com.example.cloudfour.storeservice.domain.review.service.query;
 
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
+import com.example.cloudfour.storeservice.client.UserClient;
 import com.example.cloudfour.storeservice.domain.collection.document.ReviewDocument;
 import com.example.cloudfour.storeservice.domain.collection.repository.query.ReviewSearchRepository;
 import com.example.cloudfour.storeservice.domain.common.UserResponseDTO;
-import com.example.cloudfour.storeservice.domain.review.converter.ReviewConverter;
 import com.example.cloudfour.storeservice.domain.review.dto.ReviewResponseDTO;
 import com.example.cloudfour.storeservice.domain.review.exception.ReviewErrorCode;
 import com.example.cloudfour.storeservice.domain.review.exception.ReviewException;
@@ -14,20 +14,16 @@ import com.example.cloudfour.storeservice.domain.store.exception.StoreException;
 import com.example.cloudfour.storeservice.domain.store.repository.StoreRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,370 +31,173 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ReviewQueryService 단위테스트")
 class ReviewQueryServiceTest {
 
-    @Mock
-    private ReviewSearchRepository reviewRepository;
+    @Mock private ReviewSearchRepository reviewRepository;
+    @Mock private StoreRepository storeRepository;
+    @Mock private UserClient userClient;
 
-    @Mock
-    private StoreRepository storeRepository;
-
-    @Mock
-    private RestTemplate restTemplate;
-
-    @InjectMocks
-    private ReviewQueryService reviewQueryService;
+    @InjectMocks private ReviewQueryService reviewQueryService;
 
     private UUID userId;
-    private UUID storeId;
-    private UUID reviewId;
-    private CurrentUser currentUser;
-    private ReviewDocument reviewDocument;
-    private Store store;
-    private UserResponseDTO userResponseDTO;
-    private ReviewResponseDTO.ReviewDetailResponseDTO reviewDetailResponseDTO;
-    private ReviewResponseDTO.ReviewStoreResponseDTO reviewStoreResponseDTO;
-    private ReviewResponseDTO.ReviewStoreListResponseDTO reviewStoreListResponseDTO;
-    private ReviewResponseDTO.ReviewUserResponseDTO reviewUserResponseDTO;
-    private ReviewResponseDTO.ReviewUserListResponseDTO reviewUserListResponseDTO;
-    private LocalDateTime now;
+    private Passport passport;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        storeId = UUID.randomUUID();
-        reviewId = UUID.randomUUID();
-        currentUser = new CurrentUser(userId, "ROLE_USER");
-        now = LocalDateTime.now();
-
-        // Set up Store
-        store = mock(Store.class);
-        lenient().when(store.getId()).thenReturn(storeId);
-
-        // Set up UserResponseDTO
-        userResponseDTO = mock(UserResponseDTO.class);
-        lenient().when(userResponseDTO.getUserId()).thenReturn(userId);
-        lenient().when(userResponseDTO.getNickname()).thenReturn("Test User");
-
-        // Set up ReviewDocument
-        reviewDocument = mock(ReviewDocument.class);
-        lenient().when(reviewDocument.getReviewId()).thenReturn(reviewId);
-        lenient().when(reviewDocument.getScore()).thenReturn(4.5f);
-        lenient().when(reviewDocument.getContent()).thenReturn("Great food and service!");
-        lenient().when(reviewDocument.getPictureUrl()).thenReturn("review.jpg");
-        lenient().when(reviewDocument.getUserId()).thenReturn(userId);
-        lenient().when(reviewDocument.getUserName()).thenReturn("Test User");
-        lenient().when(reviewDocument.getStoreId()).thenReturn(storeId);
-        lenient().when(reviewDocument.getCreatedAt()).thenReturn(now);
-
-        // Set up response DTOs
-        reviewDetailResponseDTO = mock(ReviewResponseDTO.ReviewDetailResponseDTO.class);
-        reviewStoreResponseDTO = mock(ReviewResponseDTO.ReviewStoreResponseDTO.class);
-        reviewStoreListResponseDTO = mock(ReviewResponseDTO.ReviewStoreListResponseDTO.class);
-        reviewUserResponseDTO = mock(ReviewResponseDTO.ReviewUserResponseDTO.class);
-        reviewUserListResponseDTO = mock(ReviewResponseDTO.ReviewUserListResponseDTO.class);
+        passport = Passport.builder().userId(userId).build();
     }
 
-    @Nested
-    @DisplayName("getReviewById 메소드는")
-    class GetReviewByIdTests {
-
-        @Test
-        @DisplayName("유효한 요청이 주어지면 리뷰 상세 정보를 반환한다")
-        void getReviewById_ValidRequest_ReturnsReviewDetail() {
-            // Given
-            when(restTemplate.getForObject(anyString(), eq(UserResponseDTO.class), any(Object[].class)))
-                    .thenReturn(userResponseDTO);
-            when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(reviewDocument));
-            
-            try (MockedStatic<ReviewConverter> mockedStatic = mockStatic(ReviewConverter.class)) {
-                mockedStatic.when(() -> ReviewConverter.toReviewDetailResponseDTO(reviewDocument, "Test User"))
-                        .thenReturn(reviewDetailResponseDTO);
-
-                // When
-                ReviewResponseDTO.ReviewDetailResponseDTO result = reviewQueryService.getReviewById(reviewId, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(reviewDetailResponseDTO);
-                verify(restTemplate).getForObject(anyString(), eq(UserResponseDTO.class), any(Object[].class));
-                verify(reviewRepository).findById(reviewId);
-            }
-        }
-
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void getReviewById_NullUser_ThrowsException() {
-            // Given
-            CurrentUser nullUser = null;
-
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewById(reviewId, nullUser))
-                    .isInstanceOf(ReviewException.class)
-                    .hasFieldOrPropertyWithValue("code", ReviewErrorCode.UNAUTHORIZED_ACCESS);
-            
-            verify(restTemplate, never()).getForObject(anyString(), any(Class.class), any(Object[].class));
-            verify(reviewRepository, never()).findById(any());
-        }
-
-        @Test
-        @DisplayName("사용자 정보를 찾을 수 없으면 예외를 던진다")
-        void getReviewById_UserNotFound_ThrowsException() {
-            // Given
-            when(restTemplate.getForObject(anyString(), eq(UserResponseDTO.class), any(Object[].class)))
-                    .thenReturn(null);
-
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewById(reviewId, currentUser))
-                    .isInstanceOf(ReviewException.class)
-                    .hasFieldOrPropertyWithValue("code", ReviewErrorCode.UNAUTHORIZED_ACCESS);
-            
-            verify(restTemplate).getForObject(anyString(), eq(UserResponseDTO.class), any(Object[].class));
-            verify(reviewRepository, never()).findById(any());
-        }
-
-        @Test
-        @DisplayName("리뷰를 찾을 수 없으면 예외를 던진다")
-        void getReviewById_ReviewNotFound_ThrowsException() {
-            // Given
-            when(restTemplate.getForObject(anyString(), eq(UserResponseDTO.class), any(Object[].class)))
-                    .thenReturn(userResponseDTO);
-            when(reviewRepository.findById(reviewId)).thenReturn(Optional.empty());
-
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewById(reviewId, currentUser))
-                    .isInstanceOf(ReviewException.class)
-                    .hasFieldOrPropertyWithValue("code", ReviewErrorCode.NOT_FOUND);
-            
-            verify(restTemplate).getForObject(anyString(), eq(UserResponseDTO.class), any(Object[].class));
-            verify(reviewRepository).findById(reviewId);
-        }
+    private ReviewDocument sampleDoc(UUID reviewId, UUID storeId, String userName, LocalDateTime createdAt) {
+        return ReviewDocument.builder()
+                .reviewId(reviewId)
+                .userId(userId)
+                .storeId(storeId)
+                .userName(userName)
+                .score(4.5f)
+                .content("맛있어요")
+                .pictureUrl("pic")
+                .createdAt(createdAt)
+                .build();
     }
 
-    @Nested
-    @DisplayName("getReviewListByStore 메소드는")
-    class GetReviewListByStoreTests {
+    @Test
+    @DisplayName("getReviewById: 성공 - 상세 조회 반환")
+    void getReviewById_success() {
+        UUID reviewId = UUID.randomUUID();
+        UUID storeId = UUID.randomUUID();
+        given(userClient.getUser(userId)).willReturn(UserResponseDTO.builder().userId(userId).nickname("닉네임").build());
+        ReviewDocument doc = sampleDoc(reviewId, storeId, "리뷰작성자", LocalDateTime.now());
+        given(reviewRepository.findById(reviewId)).willReturn(Optional.of(doc));
 
-        @Test
-        @DisplayName("유효한 요청이 주어지면 가게의 리뷰 목록을 반환한다")
-        void getReviewListByStore_ValidRequest_ReturnsReviewList() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            List<ReviewDocument> reviewDocuments = List.of(reviewDocument);
-            Slice<ReviewDocument> reviewSlice = new SliceImpl<>(reviewDocuments, Pageable.ofSize(size), false);
-            List<ReviewResponseDTO.ReviewStoreResponseDTO> reviewStoreResponseDTOs = List.of(reviewStoreResponseDTO);
-            
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            when(reviewRepository.findAllByStoreId(eq(storeId), eq(cursor), any(Pageable.class)))
-                    .thenReturn(reviewSlice);
-            
-            try (MockedStatic<ReviewConverter> mockedStatic = mockStatic(ReviewConverter.class)) {
-                mockedStatic.when(() -> ReviewConverter.toReviewStoreResponseDTO(reviewDocument))
-                        .thenReturn(reviewStoreResponseDTO);
-                mockedStatic.when(() -> ReviewConverter.toReviewStoreListResponseDTO(eq(reviewStoreResponseDTOs), eq(false), isNull()))
-                        .thenReturn(reviewStoreListResponseDTO);
+        ReviewResponseDTO.ReviewDetailResponseDTO res = reviewQueryService.getReviewById(reviewId, passport);
 
-                // When
-                ReviewResponseDTO.ReviewStoreListResponseDTO result = 
-                        reviewQueryService.getReviewListByStore(storeId, cursor, size, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(reviewStoreListResponseDTO);
-                verify(storeRepository).findById(storeId);
-                verify(reviewRepository).findAllByStoreId(eq(storeId), eq(cursor), any(Pageable.class));
-            }
-        }
-
-        @Test
-        @DisplayName("cursor가 null이면 기본값을 사용한다")
-        void getReviewListByStore_NullCursor_UsesDefaultCursor() {
-            // Given
-            LocalDateTime nullCursor = null;
-            int size = 10;
-            List<ReviewDocument> reviewDocuments = List.of(reviewDocument);
-            Slice<ReviewDocument> reviewSlice = new SliceImpl<>(reviewDocuments, Pageable.ofSize(size), false);
-            List<ReviewResponseDTO.ReviewStoreResponseDTO> reviewStoreResponseDTOs = List.of(reviewStoreResponseDTO);
-            
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            when(reviewRepository.findAllByStoreId(eq(storeId), any(LocalDateTime.class), any(Pageable.class)))
-                    .thenReturn(reviewSlice);
-            
-            try (MockedStatic<ReviewConverter> mockedStatic = mockStatic(ReviewConverter.class)) {
-                mockedStatic.when(() -> ReviewConverter.toReviewStoreResponseDTO(reviewDocument))
-                        .thenReturn(reviewStoreResponseDTO);
-                mockedStatic.when(() -> ReviewConverter.toReviewStoreListResponseDTO(eq(reviewStoreResponseDTOs), eq(false), isNull()))
-                        .thenReturn(reviewStoreListResponseDTO);
-
-                // When
-                ReviewResponseDTO.ReviewStoreListResponseDTO result = 
-                        reviewQueryService.getReviewListByStore(storeId, nullCursor, size, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(reviewStoreListResponseDTO);
-                verify(storeRepository).findById(storeId);
-                verify(reviewRepository).findAllByStoreId(eq(storeId), any(LocalDateTime.class), any(Pageable.class));
-            }
-        }
-
-        @Test
-        @DisplayName("가게를 찾을 수 없으면 예외를 던진다")
-        void getReviewListByStore_StoreNotFound_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            
-            when(storeRepository.findById(storeId)).thenReturn(Optional.empty());
-
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewListByStore(storeId, cursor, size, currentUser))
-                    .isInstanceOf(StoreException.class)
-                    .hasFieldOrPropertyWithValue("code", StoreErrorCode.NOT_FOUND);
-            
-            verify(storeRepository).findById(storeId);
-            verify(reviewRepository, never()).findAllByStoreId(any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void getReviewListByStore_NullUser_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            CurrentUser nullUser = null;
-            
-            // ✅ Store 조회를 성공시켜서 user null 체크까지 도달하게 함
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewListByStore(storeId, cursor, size, nullUser))
-                    .isInstanceOf(ReviewException.class)
-                    .hasFieldOrPropertyWithValue("code", ReviewErrorCode.UNAUTHORIZED_ACCESS);
-            
-            verify(storeRepository).findById(storeId);
-            verify(reviewRepository, never()).findAllByStoreId(any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("리뷰가 없으면 예외를 던진다")
-        void getReviewListByStore_NoReviews_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            Slice<ReviewDocument> emptySlice = new SliceImpl<>(new ArrayList<>(), Pageable.ofSize(size), false);
-            
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            when(reviewRepository.findAllByStoreId(eq(storeId), eq(cursor), any(Pageable.class)))
-                    .thenReturn(emptySlice);
-
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewListByStore(storeId, cursor, size, currentUser))
-                    .isInstanceOf(ReviewException.class)
-                    .hasFieldOrPropertyWithValue("code", ReviewErrorCode.NOT_FOUND);
-            
-            verify(storeRepository).findById(storeId);
-            verify(reviewRepository).findAllByStoreId(eq(storeId), eq(cursor), any(Pageable.class));
-        }
+        assertThat(res.getStoreId()).isEqualTo(storeId);
+        assertThat(res.getUserId()).isEqualTo(userId);
+        assertThat(res.getNickname()).isEqualTo("리뷰작성자");
+        assertThat(res.getReviewCommonGetResponseDTO().getScore()).isEqualTo(4.5f);
+        assertThat(res.getReviewCommonGetResponseDTO().getContent()).isEqualTo("맛있어요");
     }
 
-    @Nested
-    @DisplayName("getReviewListByUser 메소드는")
-    class GetReviewListByUserTests {
+    @Test
+    @DisplayName("getReviewById: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void getReviewById_unauthorized() {
+        assertThatThrownBy(() -> reviewQueryService.getReviewById(UUID.randomUUID(), null))
+                .isInstanceOf(ReviewException.class)
+                .hasMessageContaining(ReviewErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verifyNoInteractions(userClient, reviewRepository);
+    }
 
-        @Test
-        @DisplayName("유효한 요청이 주어지면 사용자의 리뷰 목록을 반환한다")
-        void getReviewListByUser_ValidRequest_ReturnsReviewList() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            List<ReviewDocument> reviewDocuments = List.of(reviewDocument);
-            Slice<ReviewDocument> reviewSlice = new SliceImpl<>(reviewDocuments, Pageable.ofSize(size), false);
-            List<ReviewResponseDTO.ReviewUserResponseDTO> reviewUserResponseDTOs = List.of(reviewUserResponseDTO);
-            
-            when(reviewRepository.findAllByUserId(eq(userId), eq(cursor), any(Pageable.class)))
-                    .thenReturn(reviewSlice);
-            
-            try (MockedStatic<ReviewConverter> mockedStatic = mockStatic(ReviewConverter.class)) {
-                mockedStatic.when(() -> ReviewConverter.toReviewUserResponseDTO(reviewDocument))
-                        .thenReturn(reviewUserResponseDTO);
-                mockedStatic.when(() -> ReviewConverter.toReviewUserListResponseDTO(eq(reviewUserResponseDTOs), eq(false), isNull()))
-                        .thenReturn(reviewUserListResponseDTO);
+    @Test
+    @DisplayName("getReviewById: 사용자 조회 실패 -> UNAUTHORIZED_ACCESS")
+    void getReviewById_userNotFound() {
+        given(userClient.getUser(userId)).willReturn(null);
+        assertThatThrownBy(() -> reviewQueryService.getReviewById(UUID.randomUUID(), passport))
+                .isInstanceOf(ReviewException.class)
+                .hasMessageContaining(ReviewErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verify(reviewRepository, never()).findById(any());
+    }
 
-                // When
-                ReviewResponseDTO.ReviewUserListResponseDTO result = 
-                        reviewQueryService.getReviewListByUser(cursor, size, currentUser);
+    @Test
+    @DisplayName("getReviewById: 리뷰 없음 -> NOT_FOUND")
+    void getReviewById_notFound() {
+        given(userClient.getUser(userId)).willReturn(UserResponseDTO.builder().userId(userId).nickname("n").build());
+        UUID reviewId = UUID.randomUUID();
+        given(reviewRepository.findById(reviewId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> reviewQueryService.getReviewById(reviewId, passport))
+                .isInstanceOf(ReviewException.class)
+                .hasMessageContaining(ReviewErrorCode.NOT_FOUND.getMessage());
+    }
 
-                // Then
-                assertThat(result).isEqualTo(reviewUserListResponseDTO);
-                verify(reviewRepository).findAllByUserId(eq(userId), eq(cursor), any(Pageable.class));
-            }
-        }
+    @Test
+    @DisplayName("getReviewListByStore: 성공 - 페이징/커서 동작")
+    void getReviewListByStore_success() {
+        UUID storeId = UUID.randomUUID();
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(mock(Store.class)));
+        LocalDateTime now = LocalDateTime.now();
+        ReviewDocument d1 = sampleDoc(UUID.randomUUID(), storeId, "u1", now.minusMinutes(3));
+        ReviewDocument d2 = sampleDoc(UUID.randomUUID(), storeId, "u2", now.minusMinutes(1));
+        Slice<ReviewDocument> slice = new SliceImpl<>(List.of(d1, d2), PageRequest.of(0, 2), true);
+        given(reviewRepository.findAllByStoreId(eq(storeId), any(), any())).willReturn(slice);
 
-        @Test
-        @DisplayName("cursor가 null이면 기본값을 사용한다")
-        void getReviewListByUser_NullCursor_UsesDefaultCursor() {
-            // Given
-            LocalDateTime nullCursor = null;
-            int size = 10;
-            List<ReviewDocument> reviewDocuments = List.of(reviewDocument);
-            Slice<ReviewDocument> reviewSlice = new SliceImpl<>(reviewDocuments, Pageable.ofSize(size), false);
-            List<ReviewResponseDTO.ReviewUserResponseDTO> reviewUserResponseDTOs = List.of(reviewUserResponseDTO);
-            
-            when(reviewRepository.findAllByUserId(eq(userId), any(LocalDateTime.class), any(Pageable.class)))
-                    .thenReturn(reviewSlice);
-            
-            try (MockedStatic<ReviewConverter> mockedStatic = mockStatic(ReviewConverter.class)) {
-                mockedStatic.when(() -> ReviewConverter.toReviewUserResponseDTO(reviewDocument))
-                        .thenReturn(reviewUserResponseDTO);
-                mockedStatic.when(() -> ReviewConverter.toReviewUserListResponseDTO(eq(reviewUserResponseDTOs), eq(false), isNull()))
-                        .thenReturn(reviewUserListResponseDTO);
+        ReviewResponseDTO.ReviewStoreListResponseDTO res = reviewQueryService.getReviewListByStore(storeId, null, 2, passport);
 
-                // When
-                ReviewResponseDTO.ReviewUserListResponseDTO result = 
-                        reviewQueryService.getReviewListByUser(nullCursor, size, currentUser);
+        assertThat(res.getReviews()).hasSize(2);
+        assertThat(res.isHasNext()).isTrue();
+        assertThat(res.getCursor()).isEqualTo(d2.getCreatedAt());
+    }
 
-                // Then
-                assertThat(result).isEqualTo(reviewUserListResponseDTO);
-                verify(reviewRepository).findAllByUserId(eq(userId), any(LocalDateTime.class), any(Pageable.class));
-            }
-        }
+    @Test
+    @DisplayName("getReviewListByStore: 가게 없음 -> NOT_FOUND")
+    void getReviewListByStore_storeNotFound() {
+        UUID storeId = UUID.randomUUID();
+        given(storeRepository.findById(storeId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> reviewQueryService.getReviewListByStore(storeId, LocalDateTime.now(), 10, passport))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.NOT_FOUND.getMessage());
+        verify(reviewRepository, never()).findAllByStoreId(any(), any(), any());
+    }
 
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void getReviewListByUser_NullUser_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            CurrentUser nullUser = null;
+    @Test
+    @DisplayName("getReviewListByStore: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void getReviewListByStore_unauthorized() {
+        UUID storeId = UUID.randomUUID();
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(mock(Store.class)));
+        assertThatThrownBy(() -> reviewQueryService.getReviewListByStore(storeId, LocalDateTime.now(), 10, null))
+                .isInstanceOf(ReviewException.class)
+                .hasMessageContaining(ReviewErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verify(reviewRepository, never()).findAllByStoreId(any(), any(), any());
+    }
 
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewListByUser(cursor, size, nullUser))
-                    .isInstanceOf(ReviewException.class)
-                    .hasFieldOrPropertyWithValue("code", ReviewErrorCode.UNAUTHORIZED_ACCESS);
-            
-            verify(reviewRepository, never()).findAllByUserId(any(), any(), any());
-        }
+    @Test
+    @DisplayName("getReviewListByStore: 리뷰 없음 -> NOT_FOUND")
+    void getReviewListByStore_noReviews() {
+        UUID storeId = UUID.randomUUID();
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(mock(Store.class)));
+        Slice<ReviewDocument> empty = new SliceImpl<>(List.of(), PageRequest.of(0, 10), false);
+        given(reviewRepository.findAllByStoreId(eq(storeId), any(), any())).willReturn(empty);
 
-        @Test
-        @DisplayName("리뷰가 없으면 예외를 던진다")
-        void getReviewListByUser_NoReviews_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            Slice<ReviewDocument> emptySlice = new SliceImpl<>(new ArrayList<>(), Pageable.ofSize(size), false);
-            
-            when(reviewRepository.findAllByUserId(eq(userId), eq(cursor), any(Pageable.class)))
-                    .thenReturn(emptySlice);
+        assertThatThrownBy(() -> reviewQueryService.getReviewListByStore(storeId, LocalDateTime.now(), 10, passport))
+                .isInstanceOf(ReviewException.class)
+                .hasMessageContaining(ReviewErrorCode.NOT_FOUND.getMessage());
+    }
 
-            // When & Then
-            assertThatThrownBy(() -> reviewQueryService.getReviewListByUser(cursor, size, currentUser))
-                    .isInstanceOf(ReviewException.class)
-                    .hasFieldOrPropertyWithValue("code", ReviewErrorCode.NOT_FOUND);
-            
-            verify(reviewRepository).findAllByUserId(eq(userId), eq(cursor), any(Pageable.class));
-        }
+    @Test
+    @DisplayName("getReviewListByUser: 성공 - 페이징/커서 동작")
+    void getReviewListByUser_success() {
+        LocalDateTime now = LocalDateTime.now();
+        ReviewDocument d1 = sampleDoc(UUID.randomUUID(), UUID.randomUUID(), "u1", now.minusMinutes(2));
+        Slice<ReviewDocument> slice = new SliceImpl<>(List.of(d1), PageRequest.of(0, 1), false);
+        given(reviewRepository.findAllByUserId(eq(userId), any(), any())).willReturn(slice);
+
+        ReviewResponseDTO.ReviewUserListResponseDTO res = reviewQueryService.getReviewListByUser(null, 1, passport);
+
+        assertThat(res.getReviews()).hasSize(1);
+        assertThat(res.isHasNext()).isFalse();
+        assertThat(res.getCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("getReviewListByUser: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void getReviewListByUser_unauthorized() {
+        assertThatThrownBy(() -> reviewQueryService.getReviewListByUser(LocalDateTime.now(), 10, null))
+                .isInstanceOf(ReviewException.class)
+                .hasMessageContaining(ReviewErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verify(reviewRepository, never()).findAllByUserId(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("getReviewListByUser: 리뷰 없음 -> NOT_FOUND")
+    void getReviewListByUser_noReviews() {
+        Slice<ReviewDocument> empty = new SliceImpl<>(List.of(), PageRequest.of(0, 10), false);
+        given(reviewRepository.findAllByUserId(eq(userId), any(), any())).willReturn(empty);
+        assertThatThrownBy(() -> reviewQueryService.getReviewListByUser(LocalDateTime.now(), 10, passport))
+                .isInstanceOf(ReviewException.class)
+                .hasMessageContaining(ReviewErrorCode.NOT_FOUND.getMessage());
     }
 }
+
