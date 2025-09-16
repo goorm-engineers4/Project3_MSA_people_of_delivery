@@ -70,8 +70,7 @@ public class InventoryCommandHandler {
                             handleReleaseInventory((InventoryCommands.ReleaseInventory) payload);
                             acknowledgment.acknowledge();
                         } else {
-                            log.warn("알 수 없는 인벤토리 커맨드 타입: {}", payload.getClass().getSimpleName());
-                            acknowledgment.acknowledge();
+                            throw new IllegalArgumentException("알 수 없는 인벤토리 커맨드 타입: " + payload.getClass().getSimpleName());
                         }
             
         } catch (Exception e) {
@@ -81,8 +80,7 @@ public class InventoryCommandHandler {
                     envelope.getMeta().getType(), e);
             
             log.error("인벤토리 커맨드 처리 실패: error={}", e.getMessage(), e);
-            
-            sagaAwareDLQHandler.handleSagaFailure(topic, key, (Envelope<Object>) envelope, e, acknowledgment);
+            throw e;
         }
     }
 
@@ -115,8 +113,7 @@ public class InventoryCommandHandler {
                     envelope.getMeta().getType(), e);
             
             log.error("결제 이벤트 처리 실패: error={}", e.getMessage(), e);
-            
-            sagaAwareDLQHandler.handleSagaFailure(topic, key, (Envelope<Object>) envelope, e, acknowledgment);
+            throw e;
         }
     }
     
@@ -127,10 +124,10 @@ public class InventoryCommandHandler {
             } else if ("ReleaseInventory".equals(type)) {
                 return objectMapper.convertValue(map, InventoryCommands.ReleaseInventory.class);
             }
-            return map;
+            throw new IllegalArgumentException("지원하지 않는 커맨드 타입: " + type);
         } catch (Exception e) {
             log.error("커맨드 변환 실패: type={}, error={}", type, e.getMessage(), e);
-            return map;
+            throw e;
         }
     }
     

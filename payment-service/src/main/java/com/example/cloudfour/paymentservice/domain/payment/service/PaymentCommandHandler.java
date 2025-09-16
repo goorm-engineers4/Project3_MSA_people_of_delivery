@@ -80,8 +80,7 @@ public class PaymentCommandHandler {
                     envelope.getMeta().getType(), e);
             
             log.error("결제 커맨드 처리 실패: error={}", e.getMessage(), e);
-
-            sagaAwareDLQHandler.handleSagaFailure(topic, key, (Envelope<Object>) envelope, e, acknowledgment);
+            throw new RuntimeException("결제 커맨드 처리 실패", e);
         }
     }
 

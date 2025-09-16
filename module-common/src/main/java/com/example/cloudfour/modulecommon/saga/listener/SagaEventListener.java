@@ -408,8 +408,9 @@ public class SagaEventListener {
         }
     }
 
-    private void handleMessageFailure(String topic, String key, Envelope<Object> envelope, 
-                                    Exception error, Acknowledgment acknowledgment) {
-        sagaAwareDLQHandler.handleSagaFailure(topic, key, envelope, error, acknowledgment);
+    private void handleMessageFailure(String topic, String key, Envelope<Object> envelope,
+                                      Exception error, Acknowledgment acknowledgment) {
+        // 컨테이너의 DefaultErrorHandler가 재시도/최종 DLQ 라우팅을 처리하도록 위임
+        throw new RuntimeException("사가 이벤트 처리 실패", error);
     }
 }
