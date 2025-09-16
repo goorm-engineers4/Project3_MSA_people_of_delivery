@@ -8,22 +8,30 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwtException;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("JwtService 단위 테스트")
 class JwtServiceTest {
 
     @InjectMocks JwtService sut;
-    @Mock JwtEncoder encoder;
-    @Mock JwtDecoder decoder;
+    @Mock
+    JwtEncoder encoder;
+    @Mock
+    JwtDecoder decoder;
     @Mock JwtProps props;
 
     UUID uid;
@@ -48,9 +56,17 @@ class JwtServiceTest {
     }
 
     @Test
+    @DisplayName("TTL 값이 1 미만이면 기본값 300 적용")
+    void ttl_fallback_when_invalid() {
+        when(props.getAccessExpSeconds()).thenReturn(0L);
+        when(props.getRefreshExpSeconds()).thenReturn(-1L);
+        assertThat(sut.accessTtlSeconds()).isEqualTo(300L);
+        assertThat(sut.refreshTtlSeconds()).isEqualTo(300L);
+    }
+
+    @Test
     @DisplayName("createRefresh(): Encoder 호출 후 토큰값 반환")
     void createRefresh_returns_token() {
-        // props는 이 테스트에서만 필요
         when(props.getIssuer()).thenReturn("issuer");
         when(props.getAudience()).thenReturn("aud");
         when(props.getRefreshExpSeconds()).thenReturn(7200L);
