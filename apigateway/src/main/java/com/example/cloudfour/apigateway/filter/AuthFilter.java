@@ -42,6 +42,11 @@ public class AuthFilter extends AbstractGatewayFilterFactory<AuthFilter.Config> 
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
+            String path = exchange.getRequest().getURI().getPath();
+            // actuator 요청은 인증 스킵
+            if (path.startsWith("/actuator")) {
+                return chain.filter(exchange);
+            }
             var request = exchange.getRequest();
             String token = extractToken(request);
 
