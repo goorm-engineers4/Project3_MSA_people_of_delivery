@@ -9,7 +9,7 @@ import com.example.cloudfour.cartservice.domain.cart.exception.CartException;
 import com.example.cloudfour.cartservice.domain.cart.repository.CartRepository;
 import com.example.cloudfour.cartservice.domain.cartitem.entity.CartItem;
 import com.example.cloudfour.cartservice.domain.cartitem.repository.CartItemRepository;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -44,7 +44,7 @@ class CartQueryServiceTest {
 
     private UUID userId;
     private UUID cartId;
-    private CurrentUser currentUser;
+    private Passport currentUser;
     private Cart cart;
     private List<CartItem> cartItems;
     private CartItem cartItem1;
@@ -55,7 +55,7 @@ class CartQueryServiceTest {
     void setUp() {
         userId = UUID.randomUUID();
         cartId = UUID.randomUUID();
-        currentUser = new CurrentUser(userId, "testUser");
+        currentUser = Passport.builder().userId(userId).role("ROLE_CUSTOMER").build();
 
         // Mock Cart
         cart = mock(Cart.class);
@@ -114,7 +114,7 @@ class CartQueryServiceTest {
         @DisplayName("사용자가 null이면 예외를 던진다")
         void getCartListById_NullUser_ThrowsException() {
             // Given
-            CurrentUser nullUser = null;
+            Passport nullUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartQueryService.getCartListById(cartId, nullUser))
@@ -128,7 +128,7 @@ class CartQueryServiceTest {
         @DisplayName("사용자 ID가 null이면 예외를 던진다")
         void getCartListById_NullUserId_ThrowsException() {
             // Given
-            CurrentUser invalidUser = new CurrentUser(null, "testUser");
+            Passport invalidUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartQueryService.getCartListById(cartId, invalidUser))

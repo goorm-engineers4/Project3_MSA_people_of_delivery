@@ -15,7 +15,7 @@ import com.example.cloudfour.cartservice.domain.cartitem.dto.CartItemRequestDTO;
 import com.example.cloudfour.cartservice.domain.cartitem.dto.CartItemResponseDTO;
 import com.example.cloudfour.cartservice.domain.cartitem.service.command.CartItemCommandService;
 import com.example.cloudfour.cartservice.commondto.MenuResponseDTO;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -57,7 +57,7 @@ class CartCommandServiceTest {
     private UUID menuId;
     private UUID cartId;
     private UUID cartItemId;
-    private CurrentUser currentUser;
+    private Passport currentUser;
     private Cart cart;
     private MenuResponseDTO menu;
     private CartRequestDTO.CartCreateRequestDTO createRequestDTO;
@@ -73,7 +73,7 @@ class CartCommandServiceTest {
         menuId = UUID.randomUUID();
         cartId = UUID.randomUUID();
         cartItemId = UUID.randomUUID();
-        currentUser = new CurrentUser(userId, "testUser");
+        currentUser = Passport.builder().userId(userId).role("ROLE_CUSTOMER").build();
 
         // Mock Cart
         cart = mock(Cart.class);
@@ -134,6 +134,7 @@ class CartCommandServiceTest {
                 // MockedStatic에서는 any() 매처 사용
                 cartItemConverterMock.when(() -> CartItemConverter.toCartItemAddRequestDTO(any(CartRequestDTO.CartCreateRequestDTO.class), any(Integer.class)))
                         .thenReturn(cartItemAddRequestDTO);
+                cartConverterMock.when(CartConverter::createEmptyCart).thenReturn(cart);
                 cartConverterMock.when(() -> CartConverter.toCartCreateResponseDTO(any(Cart.class), any(UUID.class)))
                         .thenReturn(cartCreateResponseDTO);
 
@@ -157,7 +158,7 @@ class CartCommandServiceTest {
         @DisplayName("사용자가 null이면 예외를 던진다")
         void createCart_NullUser_ThrowsException() {
             // Given
-            CurrentUser nullUser = null;
+            Passport nullUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartCommandService.createCart(createRequestDTO, nullUser))
@@ -171,7 +172,7 @@ class CartCommandServiceTest {
         @DisplayName("사용자 ID가 null이면 예외를 던진다")
         void createCart_NullUserId_ThrowsException() {
             // Given
-            CurrentUser invalidUser = new CurrentUser(null, "testUser");
+            Passport invalidUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartCommandService.createCart(createRequestDTO, invalidUser))
@@ -254,7 +255,7 @@ class CartCommandServiceTest {
         @DisplayName("사용자가 null이면 예외를 던진다")
         void deleteCart_NullUser_ThrowsException() {
             // Given
-            CurrentUser nullUser = null;
+            Passport nullUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartCommandService.deleteCart(cartId, nullUser))
@@ -268,7 +269,7 @@ class CartCommandServiceTest {
         @DisplayName("사용자 ID가 null이면 예외를 던진다")
         void deleteCart_NullUserId_ThrowsException() {
             // Given
-            CurrentUser invalidUser = new CurrentUser(null, "testUser");
+            Passport invalidUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartCommandService.deleteCart(cartId, invalidUser))

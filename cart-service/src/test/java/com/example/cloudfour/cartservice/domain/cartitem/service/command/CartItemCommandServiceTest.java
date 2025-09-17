@@ -16,7 +16,7 @@ import com.example.cloudfour.cartservice.domain.cartitem.converter.CartItemConve
 import com.example.cloudfour.cartservice.commondto.MenuResponseDTO;
 import com.example.cloudfour.cartservice.commondto.MenuOptionResponseDTO;
 
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -56,7 +56,7 @@ class CartItemCommandServiceTest {
     private UUID cartId;
     private UUID menuId;
     private UUID cartItemId;
-    private CurrentUser currentUser;
+    private Passport currentUser;
     private Cart cart;
     private CartItem cartItem;
     private MenuResponseDTO menu;
@@ -71,7 +71,7 @@ class CartItemCommandServiceTest {
         cartId = UUID.randomUUID();
         menuId = UUID.randomUUID();
         cartItemId = UUID.randomUUID();
-        currentUser = new CurrentUser(userId, "testUser");
+        currentUser = Passport.builder().userId(userId).role("ROLE_CUSTOMER").build();
 
         // Mock Cart
         cart = mock(Cart.class);
@@ -130,6 +130,8 @@ class CartItemCommandServiceTest {
             when(cartItemRepository.findByIdWithOptions(cartItemId)).thenReturn(Optional.of(cartItem));
 
             try (MockedStatic<CartItemConverter> mockedStatic = mockStatic(CartItemConverter.class)) {
+                mockedStatic.when(() -> CartItemConverter.createCartItem(anyInt(), anyInt()))
+                        .thenReturn(cartItem);
                 mockedStatic.when(() -> CartItemConverter.toCartItemAddResponseDTO(any(CartItem.class)))
                         .thenReturn(addResponseDTO);
 
@@ -150,7 +152,7 @@ class CartItemCommandServiceTest {
         @DisplayName("사용자가 null이면 예외를 던진다")
         void addCartItem_NullUser_ThrowsException() {
             // Given
-            CurrentUser nullUser = null;
+            Passport nullUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartItemCommandService.AddCartItem(addRequestDTO, cartId, nullUser))
