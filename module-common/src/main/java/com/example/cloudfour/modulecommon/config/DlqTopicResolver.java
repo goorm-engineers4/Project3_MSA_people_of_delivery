@@ -11,16 +11,25 @@ public class DlqTopicResolver {
     private Map<String, String> dlqMapping;
 
     public String resolve(String originalTopic) {
-        if (dlqMapping != null && dlqMapping.containsKey(originalTopic)) {
-            return dlqMapping.get(originalTopic);
+        if (originalTopic == null || originalTopic.isBlank()) {
+            throw new IllegalArgumentException("originalTopic must not be null/blank");
         }
-        if (originalTopic != null && originalTopic.endsWith(".v1")) {
-            return originalTopic.substring(0, originalTopic.length() - 3) + ".dlq.v1";
+        // try symbolic key → DLQ key inference (e.g., paymentEvents -> paymentEventsDLQ)
+        if (dlqMapping != null && !dlqMapping.isEmpty()) {
+            for (Map.Entry<String, String> e : dlqMapping.entrySet()) {
+                if (originalTopic.equals(e.getValue())) {
+                    String dlqKey = e.getKey().endsWith("DLQ") ? e.getKey() : e.getKey() + "DLQ";
+                    String mapped = dlqMapping.get(dlqKey);
+                    if (mapped != null && !mapped.isBlank()) {
+                        return mapped;
+                    }
+                }
+            }
         }
-        return originalTopic + ".dlq";
+        // fallback: suffix-based
+        return originalTopic.replaceFirst("\\.v1$", ".dlq.v1");
     }
 
     public Map<String, String> getDlqMapping() { return dlqMapping; }
     public void setDlqMapping(Map<String, String> dlqMapping) { this.dlqMapping = dlqMapping; }
 }
-
