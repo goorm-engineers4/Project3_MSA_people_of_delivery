@@ -7,6 +7,7 @@ import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
 import com.example.cloudfour.modulecommon.messaging.SagaAwareDLQHandler;
 import com.example.cloudfour.modulecommon.outbox.service.OutboxService;
 import com.example.cloudfour.modulecommon.schedule.ScheduledTaskService;
+import com.example.cloudfour.modulecommon.idempotency.MessageIdempotencyService;
 import com.example.cloudfour.paymentservice.domain.payment.converter.PaymentEventConverter;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
 import com.example.cloudfour.paymentservice.domain.payment.entity.Payment;
@@ -41,6 +42,7 @@ public class PaymentCommandHandler {
     private final ObjectMapper objectMapper;
     private final SagaAwareDLQHandler sagaAwareDLQHandler;
     private final ScheduledTaskService scheduledTaskService;
+    private final MessageIdempotencyService idempotencyService;
     
     @Value("${kafka.topics.paymentEvents:payment.events.v1}")
     private String paymentEventsTopic;
@@ -57,7 +59,16 @@ public class PaymentCommandHandler {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                throw new IllegalArgumentException("유효하지 않은 메시지(envelope/meta null)");
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
+            if (!idempotencyService.markIfNotProcessed("payment-command-handler", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=payment-command-handler, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             
             Object payload = envelope.getPayload();
             
@@ -74,14 +85,14 @@ public class PaymentCommandHandler {
             }
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("결제 커맨드 처리 실패: error={}", e.getMessage(), e);
-
-            sagaAwareDLQHandler.handleSagaFailure(topic, key, (Envelope<Object>) envelope, e, acknowledgment);
+            throw new RuntimeException("결제 커맨드 처리 실패", e);
         }
     }
 

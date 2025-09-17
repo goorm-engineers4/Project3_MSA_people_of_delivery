@@ -68,11 +68,22 @@ kafka:
 
 app:
   eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
+  dlq:
+    enabled: true
+    monitor:
+      enabled: true
+      alert-threshold: 1  # 1개 이상 발생하면 즉시 알림
+      alert-interval-ms: 60000  # 1분 간격으로 알림
   outbox:
     enabled: ${OUTBOX_ENABLED:true}
       
 passport:
   secret-key: ${PASSPORT_SECRET}
+
+# Discord 알림 설정
+alert:
+  discord:
+    webhookUrl: ${DISCORD_WEBHOOK}
 
 feign:
   circuitbreaker:

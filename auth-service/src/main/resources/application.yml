@@ -14,6 +14,10 @@ eureka:
 spring:
   application:
     name: auth-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaStreamsAutoConfiguration
 
   jpa:
     hibernate.ddl-auto: update
@@ -80,6 +84,18 @@ jwt:
 
 passport:
   secret-key: ${PASSPORT_SECRET}
+
+app:
+  kafka:
+    enabled: false
+  outbox:
+    enabled: false
+  saga:
+    enabled: false
+  dlq:
+    enabled: false
+    monitor:
+      enabled: false
 
 resilience4j:
   circuitbreaker:

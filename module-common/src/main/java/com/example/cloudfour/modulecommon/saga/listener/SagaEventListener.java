@@ -23,11 +23,13 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.saga", name = "enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(prefix = "app.kafka", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class SagaEventListener {
     
     private final SagaOrchestrator sagaOrchestrator;
@@ -35,9 +37,11 @@ public class SagaEventListener {
     private final ObjectMapper objectMapper;
     private final OutboxService outboxService;
     private final SagaAwareDLQHandler sagaAwareDLQHandler;
+    private final com.example.cloudfour.modulecommon.idempotency.MessageIdempotencyService idempotencyService;
 
     @KafkaListener(topics = "${kafka.topics.orderEvents:order.events.v1}", 
                    groupId = "order-saga-orchestrator")
+    @Transactional
     public void handleOrderCreated(
             @Payload Envelope<Object> envelope,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -47,7 +51,17 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
+            if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
@@ -82,10 +96,11 @@ public class SagaEventListener {
             acknowledgment.acknowledge();
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("주문 생성 이벤트 처리 실패: error={}", e.getMessage(), e);
 
@@ -95,6 +110,7 @@ public class SagaEventListener {
 
     @KafkaListener(topics = "${kafka.topics.inventoryEvents:inventory.events.v1}", 
                    groupId = "order-saga-orchestrator")
+    @Transactional
     public void handleInventoryEvent(
             @Payload Envelope<Object> envelope,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -104,7 +120,17 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
+            if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
@@ -125,10 +151,11 @@ public class SagaEventListener {
             }
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("재고 이벤트 처리 실패: error={}", e.getMessage(), e);
 
@@ -185,6 +212,7 @@ public class SagaEventListener {
 
     @KafkaListener(topics = "${kafka.topics.paymentEvents:payment.events.v1}", 
                    groupId = "order-saga-orchestrator")
+    @Transactional
     public void handlePaymentEvent(
             @Payload Envelope<Object> envelope,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -194,7 +222,17 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
+            if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
@@ -211,10 +249,11 @@ public class SagaEventListener {
             }
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("결제 이벤트 처리 실패: error={}", e.getMessage(), e);
 
@@ -303,11 +342,10 @@ public class SagaEventListener {
                 event = (InventoryEvents.InventoryCommitted) payload;
             }
             String orderId = event.getOrderId().toString();
-            
             log.info("재고 commit 성공 이벤트 처리: orderId={}", orderId);
 
-            publishOrderApprovedEvent(orderId);
-            
+            sagaOrchestrator.handleInventoryCommitted(orderId, envelope.getMeta().getMsgId());
+
             acknowledgment.acknowledge();
             
         } catch (Exception e) {
@@ -330,7 +368,8 @@ public class SagaEventListener {
             
             log.info("재고 commit 실패 이벤트 처리: orderId={}, reason={}", orderId, reason);
 
-            publishOrderCanceledEvent(orderId, reason);
+            // 재고 커밋 실패 시 주문 취소 커맨드 발행(오케스트레이터)
+            sagaOrchestrator.handleInventoryCommitFailed(orderId, envelope.getMeta().getMsgId(), reason);
             
             acknowledgment.acknowledge();
             
@@ -361,29 +400,6 @@ public class SagaEventListener {
         }
     }
 
-    private void publishOrderApprovedEvent(String orderId) {
-        try {
-            OrderEvents.OrderApproved event = OrderEvents.OrderApproved.builder()
-                    .orderId(UUID.fromString(orderId))
-                    .approvedAt(Instant.now())
-                    .build();
-            
-            outboxService.saveEvent(
-                    orderId,
-                    "Order",
-                    "OrderApproved",
-                    event,
-                    "order.events.v1",
-                    orderId
-            );
-            
-            log.info("OrderApproved 이벤트 발행 완료: orderId={}", orderId);
-            
-        } catch (Exception e) {
-            log.error("OrderApproved 이벤트 발행 실패: orderId={}, error={}", orderId, e.getMessage(), e);
-        }
-    }
-
     private void publishOrderCanceledEvent(String orderId, String reason) {
         try {
             OrderEvents.OrderCanceled event = OrderEvents.OrderCanceled.builder()
@@ -408,8 +424,8 @@ public class SagaEventListener {
         }
     }
 
-    private void handleMessageFailure(String topic, String key, Envelope<Object> envelope, 
-                                    Exception error, Acknowledgment acknowledgment) {
-        sagaAwareDLQHandler.handleSagaFailure(topic, key, envelope, error, acknowledgment);
+    private void handleMessageFailure(String topic, String key, Envelope<Object> envelope,
+                                      Exception error, Acknowledgment acknowledgment) {
+        throw new RuntimeException("사가 이벤트 처리 실패", error);
     }
 }

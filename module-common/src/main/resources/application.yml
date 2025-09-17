@@ -46,11 +46,13 @@ kafka:
   consumer:
     group-id: module-common-group
     auto-offset-reset: earliest
-    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+    key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+    value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
     enable-auto-commit: false
     properties:
-      spring.json.trusted.packages: "*"
+      spring.json.trusted.packages: "com.example.cloudfour.*"
+      spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+      spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
   topics:
     orderEvents: order.events.v1
     orderCommands: order.commands.v1
@@ -65,4 +67,16 @@ kafka:
     inventoryCommandsDLQ: inventory.commands.dlq.v1
     paymentEventsDLQ: payment.events.dlq.v1
     paymentCommandsDLQ: payment.commands.dlq.v1
+
+# DLQ 모니터링 설정
+app:
+  dlq:
+    monitor:
+      enabled: true
+      alert-threshold: 1  # 1개 이상 발생하면 즉시 알림
+      alert-interval-ms: 30000  # 30초 간격으로 알림
+
+alert:
+  discord:
+    webhookUrl: ${DISCORD_WEBHOOK}
 
