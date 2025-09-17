@@ -78,5 +78,5 @@ app:
 
 alert:
   discord:
-    webhookUrl: https://discord.com/api/webhooks/1417381784718540811/Qr7V49YIn_7mi0evEdxU51i6BeI0b8HVytOb50RrXarzuN1WI1Z2OXcEdHRpsBJaeF68
+    webhookUrl: ${DISCORD_WEBHOOK}
 
