@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Index;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,7 +23,11 @@ import java.util.UUID;
 @AllArgsConstructor
 @Entity
 @Table(name = "processed_messages",
-       uniqueConstraints = @UniqueConstraint(name = "uk_consumer_msg", columnNames = {"consumer_name", "msg_id"}))
+       uniqueConstraints = @UniqueConstraint(name = "uk_consumer_topic_msg", columnNames = {"consumer_name", "topic", "msg_id"}),
+       indexes = {
+           @Index(name = "idx_processed_msg_consumer_topic_msg", columnList = "consumer_name,topic,msg_id"),
+           @Index(name = "idx_processed_msg_consumer_msgid", columnList = "consumer_name,msg_id")
+       })
 public class ProcessedMessage {
 
     @Id
@@ -41,4 +46,3 @@ public class ProcessedMessage {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 }
-

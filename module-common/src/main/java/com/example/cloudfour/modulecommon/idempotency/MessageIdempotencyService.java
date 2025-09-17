@@ -20,22 +20,22 @@ public class MessageIdempotencyService {
         if (consumerName == null || msgId == null) {
             return true;
         }
+        final String normalizedTopic = (topic == null ? "unknown" : topic);
         try {
-            if (repository.existsByConsumerNameAndMsgId(consumerName, msgId)) {
+            if (repository.existsByConsumerNameAndTopicAndMsgId(consumerName, normalizedTopic, msgId)) {
                 return false;
             }
             ProcessedMessage pm = ProcessedMessage.builder()
                     .consumerName(consumerName)
                     .msgId(msgId)
-                    .topic(topic == null ? "unknown" : topic)
+                    .topic(normalizedTopic)
                     .createdAt(Instant.now())
                     .build();
             repository.save(pm);
             return true;
         } catch (DataIntegrityViolationException e) {
-            log.warn("멱등성 충돌: consumer={}, msgId={}", consumerName, msgId);
+            log.warn("멱등성 충돌: consumer={}, topic={}, msgId={}", consumerName, normalizedTopic, msgId);
             return false;
         }
     }
 }
-
