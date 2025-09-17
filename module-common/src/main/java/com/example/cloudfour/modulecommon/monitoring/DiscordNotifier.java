@@ -3,6 +3,7 @@ package com.example.cloudfour.modulecommon.monitoring;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -12,9 +13,10 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix="alert.discord", name="webhookUrl")
 public class DiscordNotifier implements NotificationService {
 
-    @Value("${alert.discord.webhookUrl}")
+    @Value("${alert.discord.webhookUrl:}")
     private String webhookUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
