@@ -34,6 +34,7 @@ import java.util.Map;
 
 @Configuration
 @EnableKafka
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "app.kafka", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class KafkaConfig {
 
     private final KafkaProperties kafkaProperties;

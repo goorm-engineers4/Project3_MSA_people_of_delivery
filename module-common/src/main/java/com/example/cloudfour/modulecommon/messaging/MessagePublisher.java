@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "app.kafka", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class MessagePublisher {
     
