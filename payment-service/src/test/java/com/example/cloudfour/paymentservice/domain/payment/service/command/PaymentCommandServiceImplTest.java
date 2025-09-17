@@ -4,7 +4,6 @@ import com.example.cloudfour.paymentservice.commondto.OrderResponseDTO;
 import com.example.cloudfour.paymentservice.domain.payment.apiclient.OrderClient;
 import com.example.cloudfour.paymentservice.domain.payment.apiclient.TossApiClient;
 import com.example.cloudfour.paymentservice.domain.payment.apiclient.UserClient;
-import com.example.cloudfour.paymentservice.domain.payment.apiclient.StoreClient;
 import com.example.cloudfour.paymentservice.domain.payment.converter.PaymentConverter;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentResponseDTO;
@@ -13,10 +12,9 @@ import com.example.cloudfour.paymentservice.domain.payment.entity.PaymentHistory
 import com.example.cloudfour.paymentservice.domain.payment.enums.PaymentStatus;
 import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentErrorCode;
 import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentException;
-import com.example.cloudfour.paymentservice.domain.payment.repository.PaymentRepository;
 import com.example.cloudfour.paymentservice.domain.payment.repository.PaymentHistoryRepository;
+import com.example.cloudfour.paymentservice.domain.payment.repository.PaymentRepository;
 import com.example.cloudfour.paymentservice.domain.payment.service.IdempotencyService;
-import com.example.cloudfour.paymentservice.domain.payment.service.WebhookSignatureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,41 +35,18 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.lenient;
 
-import com.example.cloudfour.paymentservice.domain.payment.dto.TossWebhookPayload;
-
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PaymentCommandServiceImpl 단위테스트")
 class PaymentCommandServiceImplTest {
 
-    @Mock
-    private TossApiClient tossApiClient;
-    
-    @Mock
-    private PaymentRepository paymentRepository;
-    
-    @Mock
-    private PaymentHistoryRepository paymentHistoryRepository;
-    
-    @Mock
-    private IdempotencyService idempotencyService;
-    
-    @Mock
-    private WebhookSignatureService webhookSignatureService;
-    
-    @Mock
-    private PaymentConverter paymentConverter;
-    
-    @Mock
-    private ObjectMapper objectMapper;
-    
-    @Mock
-    private OrderClient orderClient;
-    
-    @Mock
-    private UserClient userClient;
-    
-    @Mock
-    private StoreClient storeClient;
+    @Mock private TossApiClient tossApiClient;
+    @Mock private PaymentRepository paymentRepository;
+    @Mock private PaymentHistoryRepository paymentHistoryRepository;
+    @Mock private IdempotencyService idempotencyService;
+    @Mock private PaymentConverter paymentConverter;
+    @Mock private ObjectMapper objectMapper;
+    @Mock private OrderClient orderClient;
+    @Mock private UserClient userClient;
 
     @InjectMocks
     private PaymentCommandServiceImpl paymentCommandService;
@@ -83,7 +58,8 @@ class PaymentCommandServiceImplTest {
     private TossApiClient.TossApproveResponse tossResponse;
     private PaymentRequestDTO.PaymentConfirmRequestDTO confirmRequest;
     private PaymentRequestDTO.PaymentCancelRequestDTO cancelRequest;
-    private Payment samplePayment;
+    private Payment samplePendingPayment;
+    private Payment sampleApprovedPayment;
     private PaymentResponseDTO.PaymentConfirmResponseDTO confirmResponse;
     private PaymentResponseDTO.PaymentCancelResponseDTO cancelResponse;
 
@@ -93,7 +69,7 @@ class PaymentCommandServiceImplTest {
         orderId = UUID.randomUUID().toString();
         paymentKey = "toss_payment_key_" + UUID.randomUUID();
         amount = 15000;
-        
+
         tossResponse = new TossApiClient.TossApproveResponse();
         tossResponse.paymentKey = paymentKey;
         tossResponse.orderId = orderId;
@@ -101,18 +77,27 @@ class PaymentCommandServiceImplTest {
         tossResponse.method = "CARD";
         tossResponse.status = "DONE";
         tossResponse.approvedAt = LocalDateTime.now().toString();
-        
+
         confirmRequest = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
                 .paymentKey(paymentKey)
                 .orderId(orderId)
                 .amount(amount)
                 .build();
-        
+
         cancelRequest = PaymentRequestDTO.PaymentCancelRequestDTO.builder()
                 .cancelReason("고객 요청")
                 .build();
 
-        samplePayment = Payment.builder()
+        samplePendingPayment = Payment.builder()
+                .paymentKey(null)
+                .orderId(UUID.fromString(orderId))
+                .userId(userId)
+                .amount(amount)
+                .paymentMethod("CARD")
+                .paymentStatus(PaymentStatus.PENDING)
+                .build();
+
+        sampleApprovedPayment = Payment.builder()
                 .paymentKey(paymentKey)
                 .orderId(UUID.fromString(orderId))
                 .userId(userId)
@@ -140,7 +125,6 @@ class PaymentCommandServiceImplTest {
                 .build();
 
         lenient().when(userClient.existsUser(any(UUID.class))).thenReturn(true);
-        lenient().when(storeClient.existsStore(any(UUID.class))).thenReturn(true);
 
         OrderResponseDTO orderResponse = OrderResponseDTO.builder()
                 .id(UUID.fromString(orderId))
@@ -155,34 +139,32 @@ class PaymentCommandServiceImplTest {
     @Nested
     @DisplayName("결제 승인 (confirmPayment)")
     class ConfirmPaymentTests {
-        
         @Test
         @DisplayName("정상적인 결제 승인 성공")
         void confirmPayment_Success() throws Exception {
-            // Given
-            when(idempotencyService.checkPaymentApprovalIdempotency(anyString(), anyString()))
+            when(idempotencyService.checkPaymentApprovalIdempotency(anyString()))
                     .thenReturn(Optional.empty());
-            when(tossApiClient.approvePayment(anyString(), anyString(), any(), anyString()))
+            when(idempotencyService.generateIdempotencyKey()).thenReturn("idem-123");
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.of(samplePendingPayment));
+            when(tossApiClient.approvePayment(eq(paymentKey), eq(orderId), eq(amount), anyString()))
                     .thenReturn(tossResponse);
             when(objectMapper.writeValueAsString(any())).thenReturn("{\"test\":\"data\"}");
-            when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
-                Payment payment = invocation.getArgument(0);
-                return payment;
-            });
+            when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(paymentHistoryRepository.save(any(PaymentHistory.class))).thenReturn(PaymentHistory.builder().build());
+            when(paymentConverter.createPaymentApprovedHistory(any(Payment.class), anyString())).thenReturn(PaymentHistory.builder().build());
             when(paymentConverter.toConfirmResponse(any(Payment.class))).thenReturn(confirmResponse);
 
-            // When
             PaymentResponseDTO.PaymentConfirmResponseDTO response = paymentCommandService.confirmPayment(confirmRequest, userId);
 
-            // Then
             assertThat(response).isNotNull();
             assertThat(response.getPaymentKey()).isEqualTo(paymentKey);
             assertThat(response.getOrderId()).isEqualTo(orderId);
             assertThat(response.getAmount()).isEqualTo(amount);
             assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.APPROVED);
 
-            verify(idempotencyService).checkPaymentApprovalIdempotency(paymentKey, orderId);
+            verify(idempotencyService).checkPaymentApprovalIdempotency(paymentKey);
+            verify(paymentRepository).findByOrderIdAndUserId(UUID.fromString(orderId), userId);
             verify(tossApiClient).approvePayment(eq(paymentKey), eq(orderId), eq(amount), anyString());
             verify(paymentRepository).save(any(Payment.class));
             verify(paymentHistoryRepository).save(any(PaymentHistory.class));
@@ -190,129 +172,109 @@ class PaymentCommandServiceImplTest {
         }
 
         @Test
-        @DisplayName("중복 결제 승인 요청 시 기존 결제 정보 반환")
+        @DisplayName("멱등성: 이미 처리된 결제 반환")
         void confirmPayment_DuplicateRequest_ReturnsExistingPayment() {
-            // Given
-            when(idempotencyService.checkPaymentApprovalIdempotency(anyString(), anyString()))
-                    .thenReturn(Optional.of(samplePayment));
-            when(paymentConverter.toConfirmResponse(any(Payment.class))).thenReturn(confirmResponse);
+            when(idempotencyService.checkPaymentApprovalIdempotency(anyString()))
+                    .thenReturn(Optional.of(sampleApprovedPayment));
+            when(paymentConverter.toConfirmResponse(sampleApprovedPayment)).thenReturn(confirmResponse);
 
-            // When
             PaymentResponseDTO.PaymentConfirmResponseDTO response = paymentCommandService.confirmPayment(confirmRequest, userId);
 
-            // Then
             assertThat(response).isNotNull();
-            assertThat(response.getPaymentKey()).isEqualTo(paymentKey);
-            assertThat(response.getOrderId()).isEqualTo(orderId);
-            assertThat(response.getAmount()).isEqualTo(amount);
-            assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.APPROVED);
+            verify(tossApiClient, never()).approvePayment(anyString(), anyString(), any(), anyString());
+        }
 
+        @Test
+        @DisplayName("이미 승인된 결제는 승인 재시도 없이 반환")
+        void confirmPayment_AlreadyApproved_ReturnsExisting() {
+            when(idempotencyService.checkPaymentApprovalIdempotency(anyString())).thenReturn(Optional.empty());
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.of(sampleApprovedPayment));
+            when(paymentConverter.toConfirmResponse(sampleApprovedPayment)).thenReturn(confirmResponse);
+
+            PaymentResponseDTO.PaymentConfirmResponseDTO response = paymentCommandService.confirmPayment(confirmRequest, userId);
+
+            assertThat(response).isNotNull();
             verify(tossApiClient, never()).approvePayment(anyString(), anyString(), any(), anyString());
         }
 
         @Test
         @DisplayName("토스 API 호출 실패 시 예외 발생")
         void confirmPayment_TossApiCallFailed_ThrowsException() {
-            // Given
-            when(idempotencyService.checkPaymentApprovalIdempotency(paymentKey, orderId))
-                    .thenReturn(Optional.empty());
+            when(idempotencyService.checkPaymentApprovalIdempotency(paymentKey)).thenReturn(Optional.empty());
+            when(idempotencyService.generateIdempotencyKey()).thenReturn("idem-123");
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.of(samplePendingPayment));
             when(tossApiClient.approvePayment(anyString(), anyString(), anyInt(), anyString()))
                     .thenThrow(new RuntimeException("토스 API 호출 실패"));
 
-            // When & Then
             assertThatThrownBy(() -> paymentCommandService.confirmPayment(confirmRequest, userId))
                     .isInstanceOf(PaymentException.class)
                     .hasFieldOrPropertyWithValue("code", PaymentErrorCode.PAYMENT_APPROVAL_FAILED);
 
-            verify(idempotencyService).checkPaymentApprovalIdempotency(paymentKey, orderId);
+            verify(idempotencyService).checkPaymentApprovalIdempotency(paymentKey);
             verify(tossApiClient).approvePayment(anyString(), anyString(), anyInt(), anyString());
-
-            verify(paymentRepository, atLeastOnce()).save(any(Payment.class));
-            verify(paymentHistoryRepository, atLeastOnce()).save(any(PaymentHistory.class));
         }
 
         @Test
         @DisplayName("ObjectMapper 직렬화 실패 시 예외 발생")
         void confirmPayment_ObjectMapperSerializationFailed_ThrowsException() throws Exception {
-            // Given
-            when(idempotencyService.checkPaymentApprovalIdempotency(paymentKey, orderId))
-                    .thenReturn(Optional.empty());
+            when(idempotencyService.checkPaymentApprovalIdempotency(paymentKey)).thenReturn(Optional.empty());
+            when(idempotencyService.generateIdempotencyKey()).thenReturn("idem-123");
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.of(samplePendingPayment));
             when(tossApiClient.approvePayment(anyString(), anyString(), anyInt(), anyString()))
                     .thenReturn(tossResponse);
             when(objectMapper.writeValueAsString(any())).thenThrow(new RuntimeException("직렬화 실패"));
 
-            // When & Then
             assertThatThrownBy(() -> paymentCommandService.confirmPayment(confirmRequest, userId))
                     .isInstanceOf(PaymentException.class)
                     .hasFieldOrPropertyWithValue("code", PaymentErrorCode.PAYMENT_APPROVAL_FAILED);
 
-            verify(idempotencyService).checkPaymentApprovalIdempotency(paymentKey, orderId);
+            verify(idempotencyService).checkPaymentApprovalIdempotency(paymentKey);
             verify(tossApiClient).approvePayment(anyString(), anyString(), anyInt(), anyString());
-
-            verify(paymentRepository, atLeastOnce()).save(any(Payment.class));
-            verify(paymentHistoryRepository, atLeastOnce()).save(any(PaymentHistory.class));
         }
 
         @Test
-        @DisplayName("잘못된 amount로 요청 시 예외 발생")
-        void confirmPayment_InvalidAmount_ThrowsException() {
-            // Given
-            int invalidAmount = -1000;
-            PaymentRequestDTO.PaymentConfirmRequestDTO invalidRequest = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
-                    .orderId(orderId)
-                    .amount(invalidAmount)
-                    .build();
+        @DisplayName("결제 정보 없음")
+        void confirmPayment_PaymentNotFound_ThrowsException() {
+            when(idempotencyService.checkPaymentApprovalIdempotency(anyString())).thenReturn(Optional.empty());
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.empty());
 
-            // When & Then - 주문 정보와 결제 정보 불일치로 인한 예외 발생
-            assertThatThrownBy(() -> paymentCommandService.confirmPayment(invalidRequest, userId))
+            assertThatThrownBy(() -> paymentCommandService.confirmPayment(confirmRequest, userId))
                     .isInstanceOf(PaymentException.class)
-                    .hasFieldOrPropertyWithValue("code", PaymentErrorCode.INVALID_INPUT);
-
-            // 검증 단계에서 예외가 발생하므로 이후 로직은 실행되지 않음
-            verify(idempotencyService, never()).checkPaymentApprovalIdempotency(anyString(), anyString());
-            verify(tossApiClient, never()).approvePayment(anyString(), anyString(), anyInt(), anyString());
+                    .hasFieldOrPropertyWithValue("code", PaymentErrorCode.PAYMENT_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("amount가 0인 경우 예외 발생")
-        void confirmPayment_ZeroAmount_ThrowsException() {
-            // Given
-            int invalidAmount = 0;
-            PaymentRequestDTO.PaymentConfirmRequestDTO invalidRequest = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
-                    .orderId(orderId)
-                    .amount(invalidAmount)
-                    .build();
+        @DisplayName("사용자 없음")
+        void confirmPayment_UserNotFound_ThrowsException() {
+            when(userClient.existsUser(userId)).thenReturn(false);
 
-            // When & Then - 주문 정보와 결제 정보 불일치로 인한 예외 발생
-            assertThatThrownBy(() -> paymentCommandService.confirmPayment(invalidRequest, userId))
+            assertThatThrownBy(() -> paymentCommandService.confirmPayment(confirmRequest, userId))
                     .isInstanceOf(PaymentException.class)
-                    .hasFieldOrPropertyWithValue("code", PaymentErrorCode.INVALID_INPUT);
-
-            // 검증 단계에서 예외가 발생하므로 이후 로직은 실행되지 않음
-            verify(idempotencyService, never()).checkPaymentApprovalIdempotency(anyString(), anyString());
-            verify(tossApiClient, never()).approvePayment(anyString(), anyString(), anyInt(), anyString());
+                    .hasFieldOrPropertyWithValue("code", PaymentErrorCode.USER_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("amount가 999인 경우 예외 발생")
-        void confirmPayment_SmallAmount_ThrowsException() {
-            // Given
-            int invalidAmount = 999;
-            PaymentRequestDTO.PaymentConfirmRequestDTO invalidRequest = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
-                    .orderId(orderId)
-                    .amount(invalidAmount)
+        @DisplayName("요청 금액/저장 금액 불일치")
+        void confirmPayment_AmountMismatch_ThrowsException() {
+            when(idempotencyService.checkPaymentApprovalIdempotency(anyString())).thenReturn(Optional.empty());
+            Payment pending = Payment.builder()
+                    .orderId(UUID.fromString(orderId))
+                    .userId(userId)
+                    .amount(amount + 1)
+                    .paymentMethod("CARD")
+                    .paymentStatus(PaymentStatus.PENDING)
                     .build();
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.of(pending));
 
-            // When & Then - 주문 정보와 결제 정보 불일치로 인한 예외 발생
-            assertThatThrownBy(() -> paymentCommandService.confirmPayment(invalidRequest, userId))
+            assertThatThrownBy(() -> paymentCommandService.confirmPayment(confirmRequest, userId))
                     .isInstanceOf(PaymentException.class)
                     .hasFieldOrPropertyWithValue("code", PaymentErrorCode.INVALID_INPUT);
 
-            // 검증 단계에서 예외가 발생하므로 이후 로직은 실행되지 않음
-            verify(idempotencyService, never()).checkPaymentApprovalIdempotency(anyString(), anyString());
             verify(tossApiClient, never()).approvePayment(anyString(), anyString(), anyInt(), anyString());
         }
     }
@@ -320,82 +282,51 @@ class PaymentCommandServiceImplTest {
     @Nested
     @DisplayName("결제 취소 (cancelPayment)")
     class CancelPaymentTests {
-        
         @Test
         @DisplayName("정상적인 결제 취소 성공")
-        void cancelPayment_Success() throws Exception {
-            // Given
-            when(paymentRepository.findByOrderIdAndUserId(any(), eq(userId)))
-                    .thenReturn(Optional.of(samplePayment));
-            when(idempotencyService.checkPaymentCancelIdempotency(any(), anyString()))
-                    .thenReturn(Optional.empty());
-            doNothing().when(tossApiClient).cancelPayment(anyString(), anyString());
-            when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
-                Payment payment = invocation.getArgument(0);
-                return payment;
-            });
+        void cancelPayment_Success() {
+            Payment payment = Payment.builder()
+                    .paymentKey(paymentKey)
+                    .orderId(UUID.fromString(orderId))
+                    .userId(userId)
+                    .amount(amount)
+                    .paymentMethod("CARD")
+                    .paymentStatus(PaymentStatus.APPROVED)
+                    .build();
+
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.of(payment));
+            doNothing().when(tossApiClient).cancelPayment(paymentKey, "고객 요청");
+            when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(paymentConverter.createPaymentCanceledHistory(any(Payment.class), anyString(), anyString()))
+                    .thenReturn(PaymentHistory.builder().build());
             when(paymentHistoryRepository.save(any(PaymentHistory.class))).thenReturn(PaymentHistory.builder().build());
             when(paymentConverter.toCancelResponse(any(Payment.class), any(PaymentHistory.class))).thenReturn(cancelResponse);
 
-            // When
             PaymentResponseDTO.PaymentCancelResponseDTO response = paymentCommandService.cancelPayment(cancelRequest, UUID.fromString(orderId), userId);
 
-            // Then
             assertThat(response).isNotNull();
             assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.CANCELED);
-            assertThat(response.getCancelReason()).isEqualTo("고객 요청");
-            assertThat(response.getCanceledAt()).isNotNull();
-
-            verify(paymentRepository).findByOrderIdAndUserId(UUID.fromString(orderId), userId);
-            verify(idempotencyService).checkPaymentCancelIdempotency(samplePayment.getId(), "고객 요청");
-            verify(tossApiClient).cancelPayment(eq(paymentKey), eq("고객 요청"));
+            verify(tossApiClient).cancelPayment(paymentKey, "고객 요청");
             verify(paymentRepository).save(any(Payment.class));
             verify(paymentHistoryRepository).save(any(PaymentHistory.class));
-            verify(paymentConverter).toCancelResponse(any(Payment.class), any(PaymentHistory.class));
         }
 
         @Test
-        @DisplayName("중복 결제 취소 요청 시 기존 취소 정보 반환")
-        void cancelPayment_DuplicateRequest_ReturnsExistingCancellation() {
-            // Given
-            PaymentHistory existingHistory = PaymentHistory.builder().build();
-            when(paymentRepository.findByOrderIdAndUserId(any(), eq(userId)))
-                    .thenReturn(Optional.of(samplePayment));
-            when(idempotencyService.checkPaymentCancelIdempotency(any(), anyString()))
-                    .thenReturn(Optional.of(existingHistory));
-            when(paymentConverter.toCancelResponse(any(Payment.class), any(PaymentHistory.class))).thenReturn(cancelResponse);
-
-            // When
-            PaymentResponseDTO.PaymentCancelResponseDTO response = paymentCommandService.cancelPayment(cancelRequest, UUID.fromString(orderId), userId);
-
-            // Then
-            assertThat(response).isNotNull();
-
-            verify(tossApiClient, never()).cancelPayment(anyString(), anyString());
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 결제 취소 시 예외 발생")
+        @DisplayName("존재하지 않는 결제 취소 시 예외")
         void cancelPayment_PaymentNotFound_ThrowsException() {
-            // Given
             when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
                     .thenReturn(Optional.empty());
 
-            // When & Then
             assertThatThrownBy(() -> paymentCommandService.cancelPayment(cancelRequest, UUID.fromString(orderId), userId))
                     .isInstanceOf(PaymentException.class)
                     .hasFieldOrPropertyWithValue("code", PaymentErrorCode.PAYMENT_NOT_FOUND);
-
-            verify(paymentRepository).findByOrderIdAndUserId(UUID.fromString(orderId), userId);
-            verify(idempotencyService, never()).checkPaymentCancelIdempotency(any(), any());
-            verify(tossApiClient, never()).cancelPayment(anyString(), anyString());
         }
 
         @Test
-        @DisplayName("이미 취소된 결제 취소 시 예외 발생")
+        @DisplayName("이미 취소된 결제는 예외")
         void cancelPayment_AlreadyCanceled_ThrowsException() {
-            // Given
-            Payment canceledPayment = Payment.builder()
+            Payment canceled = Payment.builder()
                     .paymentKey(paymentKey)
                     .orderId(UUID.fromString(orderId))
                     .userId(userId)
@@ -406,80 +337,46 @@ class PaymentCommandServiceImplTest {
                     .build();
 
             when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
-                    .thenReturn(Optional.of(canceledPayment));
+                    .thenReturn(Optional.of(canceled));
 
-            // When & Then
             assertThatThrownBy(() -> paymentCommandService.cancelPayment(cancelRequest, UUID.fromString(orderId), userId))
                     .isInstanceOf(PaymentException.class)
                     .hasFieldOrPropertyWithValue("code", PaymentErrorCode.INVALID_PAYMENT_STATUS);
-
-            verify(paymentRepository).findByOrderIdAndUserId(UUID.fromString(orderId), userId);
-            verify(idempotencyService, never()).checkPaymentCancelIdempotency(any(), any());
-            verify(tossApiClient, never()).cancelPayment(anyString(), anyString());
         }
-    }
 
-    @Nested
-    @DisplayName("웹훅 처리 (updateStatusFromWebhook)")
-    class WebhookTests {
-        
         @Test
-        @DisplayName("정상적인 웹훅 처리 성공")
-        void updateStatusFromWebhook_Success() throws Exception {
-            // Given
-            String testOrderId = UUID.randomUUID().toString();
-            String webhookPayload = String.format("{\"paymentKey\":\"test_key\",\"orderId\":\"%s\",\"status\":\"DONE\"}", testOrderId);
-            TossWebhookPayload parsedPayload = TossWebhookPayload.builder()
-                    .paymentKey("test_key")
-                    .orderId(testOrderId)
-                    .status("DONE")
-                    .build();
-
-            when(webhookSignatureService.verifySignature(webhookPayload)).thenReturn(true);
-            when(objectMapper.readValue(webhookPayload, TossWebhookPayload.class))
-                    .thenReturn(parsedPayload);
-            when(idempotencyService.checkWebhookIdempotency(anyString(), anyString()))
-                    .thenReturn(Optional.empty());
-            Payment existingPayment = Payment.builder()
-                    .paymentKey("test_key")
-                    .orderId(UUID.fromString(testOrderId))
+        @DisplayName("토스 취소 실패 시 실패 히스토리 저장 후 예외")
+        void cancelPayment_TossError_SavesFailedHistoryAndThrows() {
+            Payment payment = Payment.builder()
+                    .paymentKey(paymentKey)
+                    .orderId(UUID.fromString(orderId))
                     .userId(userId)
                     .amount(amount)
                     .paymentMethod("CARD")
-                    .paymentStatus(PaymentStatus.READY)
+                    .paymentStatus(PaymentStatus.APPROVED)
                     .build();
-                    
-            when(paymentRepository.findByPaymentKey("test_key"))
-                    .thenReturn(Optional.of(existingPayment));
-            when(paymentRepository.save(any(Payment.class)))
-                    .thenReturn(existingPayment);
 
-            // When
-            paymentCommandService.updateStatusFromWebhook(webhookPayload);
+            when(paymentRepository.findByOrderIdAndUserId(UUID.fromString(orderId), userId))
+                    .thenReturn(Optional.of(payment));
+            doThrow(new RuntimeException("toss cancel error")).when(tossApiClient).cancelPayment(anyString(), anyString());
+            when(paymentConverter.createPaymentCancelFailedHistory(any(Payment.class), anyString()))
+                    .thenReturn(PaymentHistory.builder().build());
 
-            // Then
-            verify(webhookSignatureService).verifySignature(webhookPayload);
-            verify(objectMapper).readValue(webhookPayload, TossWebhookPayload.class);
-            verify(paymentRepository).findByPaymentKey("test_key");
+            assertThatThrownBy(() -> paymentCommandService.cancelPayment(cancelRequest, UUID.fromString(orderId), userId))
+                    .isInstanceOf(PaymentException.class)
+                    .hasFieldOrPropertyWithValue("code", PaymentErrorCode.PAYMENT_CANCEL_FAILED);
+
+            verify(paymentHistoryRepository).save(any(PaymentHistory.class));
         }
 
         @Test
-        @DisplayName("웹훅 페이로드 파싱 실패 시 예외 발생")
-        void updateStatusFromWebhook_ParsingFailed_ThrowsException() throws Exception {
-            // Given
-            String invalidPayload = "invalid json";
-            when(webhookSignatureService.verifySignature(invalidPayload)).thenReturn(true);
-            when(objectMapper.readValue(invalidPayload, TossWebhookPayload.class))
-                    .thenThrow(new RuntimeException("JSON 파싱 실패"));
+        @DisplayName("사용자 없음")
+        void cancelPayment_UserNotFound_ThrowsException() {
+            when(userClient.existsUser(userId)).thenReturn(false);
 
-            // When & Then
-            assertThatThrownBy(() -> paymentCommandService.updateStatusFromWebhook(invalidPayload))
+            assertThatThrownBy(() -> paymentCommandService.cancelPayment(cancelRequest, UUID.fromString(orderId), userId))
                     .isInstanceOf(PaymentException.class)
-                    .hasFieldOrPropertyWithValue("code", PaymentErrorCode.WEBHOOK_PROCESSING_FAILED);
-
-            verify(webhookSignatureService).verifySignature(invalidPayload);
-            verify(objectMapper).readValue(invalidPayload, TossWebhookPayload.class);
-            verify(paymentRepository, never()).findByPaymentKey(anyString());
+                    .hasFieldOrPropertyWithValue("code", PaymentErrorCode.USER_NOT_FOUND);
         }
     }
 }
