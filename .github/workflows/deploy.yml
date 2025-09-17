@@ -37,6 +37,8 @@ jobs:
               - 'user-service/**'
             auth:
               - 'auth-service/**'
+            payment:
+              - 'payment-service/**'
             gateway:
               - 'apigateway/**'
             common:
@@ -67,6 +69,9 @@ jobs:
           if [ "${{ steps.filter.outputs.gateway }}" = "true" ]; then
             modules+=("{\"name\":\"apigateway\",\"repo\":\"peopleofdelivery/apigateway\"}")
           fi
+          if [ "${{ steps.filter.outputs.gateway }}" = "true" ]; then
+            modules+=("{\"name\":\"payment-service\",\"repo\":\"peopleofdelivery/payment-service\"}")
+          fi
 
 
           # common 변경 시 모든 모듈 재빌드
@@ -77,6 +82,7 @@ jobs:
               "{\"name\":\"user-service\",\"repo\":\"peopleofdelivery/user-service\"}" \
               "{\"name\":\"auth-service\",\"repo\":\"peopleofdelivery/auth-service\"}" \
               "{\"name\":\"ai-service\",\"repo\":\"peopleofdelivery/ai-service\"}" \
+              "{\"name\":\"payment-service\",\"repo\":\"peopleofdelivery/payment-service\"}" \
               "{\"name\":\"apigateway\",\"repo\":\"peopleofdelivery/apigateway\"}" \
             )
           fi
