@@ -1,187 +1,193 @@
 package com.example.cloudfour.storeservice.domain.menu.service.query;
 
-import com.example.cloudfour.storeservice.domain.menu.converter.StockConverter;
 import com.example.cloudfour.storeservice.domain.menu.dto.StockResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.entity.Menu;
 import com.example.cloudfour.storeservice.domain.menu.entity.Stock;
 import com.example.cloudfour.storeservice.domain.menu.exception.MenuErrorCode;
 import com.example.cloudfour.storeservice.domain.menu.exception.MenuException;
-import com.example.cloudfour.storeservice.domain.menu.exception.StockErrorCode;
-import com.example.cloudfour.storeservice.domain.menu.exception.StockException;
 import com.example.cloudfour.storeservice.domain.menu.repository.MenuRepository;
 import com.example.cloudfour.storeservice.domain.menu.repository.StockRepository;
+import com.example.cloudfour.storeservice.domain.menu.service.RedisInventoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("StockQueryService 단위테스트")
 class StockQueryServiceTest {
 
-    @Mock
-    private StockRepository stockRepository;
+    @Mock private StockRepository stockRepository;
+    @Mock private MenuRepository menuRepository;
+    @Mock private RedisTemplate<String, String> redisTemplate;
+    @Mock private RedisInventoryService redisInventoryService;
+    @Mock private ValueOperations<String, String> valueOps;
 
-    @Mock
-    private MenuRepository menuRepository;
-
-    @InjectMocks
-    private StockQueryService stockQueryService;
+    @InjectMocks private StockQueryService stockQueryService;
 
     private UUID menuId;
     private UUID stockId;
     private Menu menu;
-    private Stock stock;
-    private StockResponseDTO stockResponseDTO;
+    private Stock stockRefOnMenu; // menu.getStock()
 
     @BeforeEach
     void setUp() {
         menuId = UUID.randomUUID();
         stockId = UUID.randomUUID();
-        
-        stock = mock(Stock.class);
-        lenient().when(stock.getId()).thenReturn(stockId);
-        lenient().when(stock.getQuantity()).thenReturn(100L);
-        lenient().when(stock.getVersion()).thenReturn(1L);
-        
+
         menu = mock(Menu.class);
+        stockRefOnMenu = mock(Stock.class);
+        lenient().when(stockRefOnMenu.getId()).thenReturn(stockId);
+        lenient().when(menu.getStock()).thenReturn(stockRefOnMenu);
         lenient().when(menu.getId()).thenReturn(menuId);
-        lenient().when(menu.getName()).thenReturn("Test Menu");
-        lenient().when(menu.getStock()).thenReturn(stock);
-        
-        stockResponseDTO = StockResponseDTO.builder()
-                .stockId(stockId)
+
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOps);
+    }
+
+    @Test
+    @DisplayName("getMenuStockTest: 성공 - DB 조회 반환")
+    void getMenuStockTest_success() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.of(menu));
+
+        Stock stockFromDb = mock(Stock.class);
+        lenient().when(stockFromDb.getId()).thenReturn(stockId);
+        lenient().when(stockFromDb.getMenu()).thenReturn(menu);
+        lenient().when(stockFromDb.getQuantity()).thenReturn(15L);
+        lenient().when(stockRepository.findByIdWithOptimisticLock(stockId)).thenReturn(Optional.of(stockFromDb));
+
+        StockResponseDTO.StockCacheResponseDTO res = stockQueryService.getMenuStockTest(menuId);
+
+        assertThat(res.getStockId()).isEqualTo(stockId);
+        assertThat(res.getMenuId()).isEqualTo(menuId);
+        assertThat(res.getQuantity()).isEqualTo(15L);
+    }
+
+    @Test
+    @DisplayName("getMenuStockTest: 메뉴 없음 -> MenuException NOT_FOUND")
+    void getMenuStockTest_menuNotFound() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> stockQueryService.getMenuStockTest(menuId))
+                .isInstanceOf(MenuException.class)
+                .hasMessageContaining(MenuErrorCode.NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("getMenuStock: 캐시 히트 - Redis 값 반환")
+    void getMenuStock_cacheHit() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.of(menu));
+        given(valueOps.get("invn:menu:" + menuId)).willReturn("12");
+
+        StockResponseDTO.StockCacheResponseDTO res = stockQueryService.getMenuStock(menuId);
+
+        assertThat(res.getMenuId()).isEqualTo(menuId);
+        assertThat(res.getStockId()).isEqualTo(stockId);
+        assertThat(res.getQuantity()).isEqualTo(12L);
+        verify(stockRepository, never()).findByIdWithOptimisticLock(any());
+    }
+
+    @Test
+    @DisplayName("getMenuStock: 캐시 미스 - DB 조회 후 캐시 저장")
+    void getMenuStock_cacheMiss_dbFetch() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.of(menu));
+        given(valueOps.get("invn:menu:" + menuId)).willReturn(null);
+
+        Stock stockFromDb = mock(Stock.class);
+        when(stockFromDb.getId()).thenReturn(stockId);
+        when(stockFromDb.getMenu()).thenReturn(menu);
+        when(stockFromDb.getQuantity()).thenReturn(30L);
+        given(stockRepository.findByIdWithOptimisticLock(stockId)).willReturn(Optional.of(stockFromDb));
+
+        StockResponseDTO.StockCacheResponseDTO res = stockQueryService.getMenuStock(menuId);
+
+        assertThat(res.getStockId()).isEqualTo(stockId);
+        assertThat(res.getMenuId()).isEqualTo(menuId);
+        assertThat(res.getQuantity()).isEqualTo(30L);
+        verify(valueOps).set("invn:menu:" + menuId, String.valueOf(30L));
+    }
+
+    @Test
+    @DisplayName("getMenuStock: 메뉴 없음 -> MenuException NOT_FOUND")
+    void getMenuStock_menuNotFound() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> stockQueryService.getMenuStock(menuId))
+                .isInstanceOf(MenuException.class)
+                .hasMessageContaining(MenuErrorCode.NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("getMenuStockAvailability: 캐시 히트 + 가용/예약 반환")
+    void getMenuStockAvailability_cacheHit_withAvail() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.of(menu));
+        given(valueOps.get("invn:menu:" + menuId)).willReturn("50");
+
+        StockResponseDTO.StockAvailabilityResponseDTO avail = StockResponseDTO.StockAvailabilityResponseDTO.builder()
                 .menuId(menuId)
-                .quantity(100L)
-                .version(1L)
+                .baseQuantity(50L)
+                .availableQuantity(40L)
+                .reservedQuantity(10L)
                 .build();
+        given(redisInventoryService.getAvailability(menuId)).willReturn(avail);
+
+        StockResponseDTO.StockAvailabilityResponseDTO res = stockQueryService.getMenuStockAvailability(menuId);
+
+        assertThat(res.getStockId()).isEqualTo(stockId);
+        assertThat(res.getMenuId()).isEqualTo(menuId);
+        assertThat(res.getBaseQuantity()).isEqualTo(50L);
+        assertThat(res.getAvailableQuantity()).isEqualTo(40L);
+        assertThat(res.getReservedQuantity()).isEqualTo(10L);
+        verify(stockRepository, never()).findByIdWithOptimisticLock(any());
     }
 
     @Test
-    @DisplayName("유효한 메뉴 ID가 주어지면 재고 정보를 반환한다")
-    void getMenuStock_ValidMenuId_ReturnsStock() {
-        // Given
-        when(menuRepository.findById(menuId)).thenReturn(Optional.of(menu));
-        when(stockRepository.findByIdWithOptimisticLock(stockId)).thenReturn(Optional.of(stock));
+    @DisplayName("getMenuStockAvailability: 캐시 미스 → DB 값과 avail nulls 처리")
+    void getMenuStockAvailability_cacheMiss_fallbackDb() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.of(menu));
+        given(valueOps.get("invn:menu:" + menuId)).willReturn(null);
 
-        try (MockedStatic<StockConverter> mockedStatic = mockStatic(StockConverter.class)) {
-            mockedStatic.when(() -> StockConverter.toStockResposneDTO(stock))
-                    .thenReturn(stockResponseDTO);
+        Stock stockFromDb = mock(Stock.class);
+        lenient().when(stockFromDb.getId()).thenReturn(stockId);
+        lenient().when(stockFromDb.getMenu()).thenReturn(menu);
+        lenient().when(stockFromDb.getQuantity()).thenReturn(77L);
+        given(stockRepository.findByIdWithOptimisticLock(stockId)).willReturn(Optional.of(stockFromDb));
 
-            // When
-            StockResponseDTO result = stockQueryService.getMenuStock(menuId);
+        StockResponseDTO.StockAvailabilityResponseDTO avail = StockResponseDTO.StockAvailabilityResponseDTO.builder()
+                .menuId(menuId)
+                .baseQuantity(null)
+                .availableQuantity(null)
+                .reservedQuantity(null)
+                .build();
+        given(redisInventoryService.getAvailability(menuId)).willReturn(avail);
 
-            // Then
-            assertThat(result).isEqualTo(stockResponseDTO);
-            assertThat(result.getStockId()).isEqualTo(stockId);
-            assertThat(result.getMenuId()).isEqualTo(menuId);
-            assertThat(result.getQuantity()).isEqualTo(100L);
-            assertThat(result.getVersion()).isEqualTo(1L);
+        StockResponseDTO.StockAvailabilityResponseDTO res = stockQueryService.getMenuStockAvailability(menuId);
 
-            verify(menuRepository).findById(menuId);
-            verify(stockRepository).findByIdWithOptimisticLock(stockId);
-            mockedStatic.verify(() -> StockConverter.toStockResposneDTO(stock));
-        }
+        assertThat(res.getStockId()).isEqualTo(stockId);
+        assertThat(res.getMenuId()).isEqualTo(menuId);
+        assertThat(res.getBaseQuantity()).isEqualTo(77L);
+        assertThat(res.getAvailableQuantity()).isEqualTo(77L);
+        assertThat(res.getReservedQuantity()).isEqualTo(0L);
+        verify(valueOps).set("invn:menu:" + menuId, String.valueOf(77L));
     }
 
     @Test
-    @DisplayName("존재하지 않는 메뉴 ID가 주어지면 예외를 던진다")
-    void getMenuStock_MenuNotFound_ThrowsException() {
-        // Given
-        when(menuRepository.findById(menuId)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThatThrownBy(() -> stockQueryService.getMenuStock(menuId))
+    @DisplayName("getMenuStockAvailability: 메뉴 없음 -> MenuException NOT_FOUND")
+    void getMenuStockAvailability_menuNotFound() {
+        given(menuRepository.findById(menuId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> stockQueryService.getMenuStockAvailability(menuId))
                 .isInstanceOf(MenuException.class)
-                .hasFieldOrPropertyWithValue("code", MenuErrorCode.NOT_FOUND);
-
-        verify(menuRepository).findById(menuId);
-        verifyNoInteractions(stockRepository);
-    }
-
-    @Test
-    @DisplayName("메뉴는 존재하지만 재고가 없으면 예외를 던진다")
-    void getMenuStock_StockNotFound_ThrowsException() {
-        // Given
-        when(menuRepository.findById(menuId)).thenReturn(Optional.of(menu));
-        when(stockRepository.findByIdWithOptimisticLock(stockId)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThatThrownBy(() -> stockQueryService.getMenuStock(menuId))
-                .isInstanceOf(StockException.class)
-                .hasFieldOrPropertyWithValue("code", StockErrorCode.NOT_FOUND);
-
-        verify(menuRepository).findById(menuId);
-        verify(stockRepository).findByIdWithOptimisticLock(stockId);
-    }
-
-    @Test
-    @DisplayName("null 메뉴 ID가 주어지면 예외를 던진다")
-    void getMenuStock_NullMenuId_ThrowsException() {
-        // Given
-        UUID nullMenuId = null;
-        when(menuRepository.findById(nullMenuId)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThatThrownBy(() -> stockQueryService.getMenuStock(nullMenuId))
-                .isInstanceOf(MenuException.class)
-                .hasFieldOrPropertyWithValue("code", MenuErrorCode.NOT_FOUND);
-
-        verify(menuRepository).findById(nullMenuId);
-    }
-
-    @Test
-    @DisplayName("StockConverter가 null을 반환해도 정상적으로 처리한다")
-    void getMenuStock_ConverterReturnsNull_ReturnsNull() {
-        // Given
-        when(menuRepository.findById(menuId)).thenReturn(Optional.of(menu));
-        when(stockRepository.findByIdWithOptimisticLock(stockId)).thenReturn(Optional.of(stock));
-
-        try (MockedStatic<StockConverter> mockedStatic = mockStatic(StockConverter.class)) {
-            mockedStatic.when(() -> StockConverter.toStockResposneDTO(stock))
-                    .thenReturn(null);
-
-            // When
-            StockResponseDTO result = stockQueryService.getMenuStock(menuId);
-
-            // Then
-            assertThat(result).isNull();
-
-            verify(menuRepository).findById(menuId);
-            verify(stockRepository).findByIdWithOptimisticLock(stockId);
-            mockedStatic.verify(() -> StockConverter.toStockResposneDTO(stock));
-        }
-    }
-
-    @Test
-    @DisplayName("낙관적 락을 사용하여 재고를 조회한다")
-    void getMenuStock_UsesOptimisticLock() {
-        // Given
-        when(menuRepository.findById(menuId)).thenReturn(Optional.of(menu));
-        when(stockRepository.findByIdWithOptimisticLock(stockId)).thenReturn(Optional.of(stock));
-
-        try (MockedStatic<StockConverter> mockedStatic = mockStatic(StockConverter.class)) {
-            mockedStatic.when(() -> StockConverter.toStockResposneDTO(stock))
-                    .thenReturn(stockResponseDTO);
-
-            // When
-            stockQueryService.getMenuStock(menuId);
-
-            // Then
-            // findByIdWithOptimisticLock 메서드가 호출되었는지 확인
-            verify(stockRepository).findByIdWithOptimisticLock(stockId);
-            verify(stockRepository, never()).findById(any(UUID.class)); // 일반 findById는 호출되지 않음
-        }
+                .hasMessageContaining(MenuErrorCode.NOT_FOUND.getMessage());
     }
 }
+

@@ -89,3 +89,16 @@ kafka:
     inventoryCommandsDLQ: inventory.commands.dlq.v1
     paymentEventsDLQ: payment.events.dlq.v1
     paymentCommandsDLQ: payment.commands.dlq.v1
+
+# DLQ 모니터링 설정
+app:
+  dlq:
+    monitor:
+      enabled: true
+      alert-threshold: 1  # 1개 이상 발생하면 즉시 알림
+      alert-interval-ms: 30000  # 30초 간격으로 알림
+
+alert:
+  discord:
+    webhookUrl: ${DISCORD_WEBHOOK}
+

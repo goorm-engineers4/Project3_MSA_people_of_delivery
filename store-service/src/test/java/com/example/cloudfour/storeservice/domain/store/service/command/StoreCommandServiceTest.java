@@ -1,13 +1,12 @@
 package com.example.cloudfour.storeservice.domain.store.service.command;
 
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import com.example.cloudfour.storeservice.domain.region.entity.Region;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionErrorCode;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionException;
 import com.example.cloudfour.storeservice.domain.region.repository.RegionRepository;
 import com.example.cloudfour.storeservice.domain.region.service.RegionService;
 import com.example.cloudfour.storeservice.domain.store.controller.StoreCommonRequestDTO;
-import com.example.cloudfour.storeservice.domain.store.converter.StoreConverter;
 import com.example.cloudfour.storeservice.domain.store.dto.StoreRequestDTO;
 import com.example.cloudfour.storeservice.domain.store.dto.StoreResponseDTO;
 import com.example.cloudfour.storeservice.domain.store.entity.Store;
@@ -18,365 +17,301 @@ import com.example.cloudfour.storeservice.domain.store.repository.StoreCategoryR
 import com.example.cloudfour.storeservice.domain.store.repository.StoreRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("StoreCommandService 단위테스트")
 class StoreCommandServiceTest {
 
-    @Mock
-    private StoreRepository storeRepository;
+    @Mock private StoreRepository storeRepository;
+    @Mock private RegionRepository regionRepository;
+    @Mock private RegionService regionService;
+    @Mock private StoreCategoryRepository storeCategoryRepository;
 
-    @Mock
-    private RegionRepository regionRepository;
+    @InjectMocks private StoreCommandService storeCommandService;
 
-    @Mock
-    private RegionService regionService;
-
-    @Mock
-    private StoreCategoryRepository storeCategoryRepository;
-
-    @InjectMocks
-    private StoreCommandService storeCommandService;
-
-    private UUID userId;
-    private UUID storeId;
-    private UUID regionId;
-    private CurrentUser currentUser;
-    private StoreRequestDTO.StoreCreateRequestDTO createRequestDTO;
-    private StoreRequestDTO.StoreUpdateRequestDTO updateRequestDTO;
-    private Store store;
-    private StoreCategory storeCategory;
-    private Region region;
-    private StoreResponseDTO.StoreCreateResponseDTO createResponseDTO;
-    private StoreResponseDTO.StoreUpdateResponseDTO updateResponseDTO;
+    private Passport ownerPassport;
+    private UUID ownerId;
 
     @BeforeEach
     void setUp() {
-        userId = UUID.randomUUID();
-        storeId = UUID.randomUUID();
-        regionId = UUID.randomUUID();
-        currentUser = new CurrentUser(userId, "ROLE_OWNER");
-
-        // Set up StoreCommonRequestDTO
-        StoreCommonRequestDTO storeCommonRequestDTO = StoreCommonRequestDTO.builder()
-                .name("Test Store")
-                .address("Test Address")
-                .category("Test Category")
-                .build();
-
-        // Set up StoreCreateRequestDTO
-        createRequestDTO = StoreRequestDTO.StoreCreateRequestDTO.builder()
-                .storeCommonRequestDTO(storeCommonRequestDTO)
-                .storePicture("test.jpg")
-                .phone("123-456-7890")
-                .content("Test Content")
-                .minPrice(10000)
-                .deliveryTip(2000)
-                .operationHours("9:00-18:00")
-                .closedDays("Sunday")
-                .build();
-
-        // Set up StoreUpdateRequestDTO
-        updateRequestDTO = StoreRequestDTO.StoreUpdateRequestDTO.builder()
-                .storeCommonRequestDTO(storeCommonRequestDTO)
-                .build();
-
-        // Set up StoreCategory
-        storeCategory = mock(StoreCategory.class);
-        lenient().when(storeCategory.getCategory()).thenReturn("Test Category");
-
-        // Set up Region
-        region = mock(Region.class);
-        lenient().when(region.getId()).thenReturn(regionId);
-
-        // Set up Store
-        store = mock(Store.class);
-        lenient().when(store.getId()).thenReturn(storeId);
-        lenient().when(store.getName()).thenReturn("Test Store");
-        lenient().when(store.getAddress()).thenReturn("Test Address");
-        lenient().when(store.getOwnerId()).thenReturn(userId);
-        lenient().when(store.getStoreCategory()).thenReturn(storeCategory);
-        lenient().when(store.getCreatedAt()).thenReturn(LocalDateTime.now());
-        lenient().when(store.getUpdatedAt()).thenReturn(LocalDateTime.now());
-
-        // Set up response DTOs
-        createResponseDTO = mock(StoreResponseDTO.StoreCreateResponseDTO.class);
-        updateResponseDTO = mock(StoreResponseDTO.StoreUpdateResponseDTO.class);
+        ownerId = UUID.randomUUID();
+        ownerPassport = Passport.builder().userId(ownerId).build();
     }
 
-    @Nested
-    @DisplayName("createStore 메소드는")
-    class CreateStoreTests {
-
-        @Test
-        @DisplayName("유효한 요청이 주어지면 가게를 생성하고 응답을 반환한다")
-        void createStore_ValidRequest_ReturnsResponse() {
-            // Given
-            String storeName = createRequestDTO.getStoreCommonRequestDTO().getName();
-            String categoryName = createRequestDTO.getStoreCommonRequestDTO().getCategory();
-            String storeAddress = createRequestDTO.getStoreCommonRequestDTO().getAddress();
-            
-            when(storeRepository.existsByNameAndIsDeletedFalse(storeName)).thenReturn(false);
-            when(storeCategoryRepository.findByCategory(categoryName)).thenReturn(Optional.of(storeCategory));
-            when(regionService.parseAndSaveRegion(storeAddress)).thenReturn(regionId);
-            when(regionRepository.findById(regionId)).thenReturn(Optional.of(region));
-            
-            try (MockedStatic<StoreConverter> mockedStatic = mockStatic(StoreConverter.class)) {
-                mockedStatic.when(() -> StoreConverter.toStore(createRequestDTO)).thenReturn(store);
-                mockedStatic.when(() -> StoreConverter.toStoreCreateResponseDTO(store)).thenReturn(createResponseDTO);
-
-                // When
-                StoreResponseDTO.StoreCreateResponseDTO result = storeCommandService.createStore(createRequestDTO, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(createResponseDTO);
-                verify(storeRepository).existsByNameAndIsDeletedFalse(storeName);
-                verify(storeCategoryRepository).findByCategory(categoryName);
-                verify(regionService).parseAndSaveRegion(storeAddress);
-                verify(regionRepository).findById(regionId);
-                verify(store).setStoreCategory(storeCategory);
-                verify(store).setRegion(region);
-                verify(store).setOwnerId(userId);
-                verify(storeRepository).save(store);
-            }
-        }
-
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void createStore_NullUser_ThrowsException() {
-            // Given
-            CurrentUser nullUser = null;
-
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.createStore(createRequestDTO, nullUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.UNAUTHORIZED_ACCESS, exception.getCode());
-        }
-
-        @Test
-        @DisplayName("이미 존재하는 가게 이름이면 예외를 던진다")
-        void createStore_DuplicateStoreName_ThrowsException() {
-            // Given
-            String storeName = createRequestDTO.getStoreCommonRequestDTO().getName();
-            when(storeRepository.existsByNameAndIsDeletedFalse(storeName)).thenReturn(true);
-
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.createStore(createRequestDTO, currentUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.ALREADY_ADD, exception.getCode());
-        }
-
-        @Test
-        @DisplayName("지역을 찾을 수 없으면 예외를 던진다")
-        void createStore_RegionNotFound_ThrowsException() {
-            // Given
-            String storeName = createRequestDTO.getStoreCommonRequestDTO().getName();
-            String categoryName = createRequestDTO.getStoreCommonRequestDTO().getCategory();
-            String storeAddress = createRequestDTO.getStoreCommonRequestDTO().getAddress();
-            
-            when(storeRepository.existsByNameAndIsDeletedFalse(storeName)).thenReturn(false);
-            when(storeCategoryRepository.findByCategory(categoryName)).thenReturn(Optional.of(storeCategory));
-            when(regionService.parseAndSaveRegion(storeAddress)).thenReturn(regionId);
-            when(regionRepository.findById(regionId)).thenReturn(Optional.empty());
-
-            try (MockedStatic<StoreConverter> mockedStatic = mockStatic(StoreConverter.class)) {
-                mockedStatic.when(() -> StoreConverter.toStore(createRequestDTO)).thenReturn(store);
-
-                // When & Then
-                RegionException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                    RegionException.class,
-                    () -> storeCommandService.createStore(createRequestDTO, currentUser)
-                );
-                
-                org.junit.jupiter.api.Assertions.assertEquals(RegionErrorCode.NOT_FOUND, exception.getCode());
-            }
-        }
+    private StoreRequestDTO.StoreCreateRequestDTO sampleCreateDTO(String name, String address, String category) {
+        StoreCommonRequestDTO common = StoreCommonRequestDTO.builder()
+                .name(name)
+                .address(address)
+                .category(category)
+                .build();
+        return StoreRequestDTO.StoreCreateRequestDTO.builder()
+                .storeCommonRequestDTO(common)
+                .storePicture("pic")
+                .phone("010-1234-5678")
+                .content("content")
+                .minPrice(1000)
+                .deliveryTip(100)
+                .operationHours("09:00-18:00")
+                .closedDays("sun")
+                .build();
     }
 
-    @Nested
-    @DisplayName("updateStore 메소드는")
-    class UpdateStoreTests {
+    @Test
+    @DisplayName("createStore: 성공적으로 저장 및 응답 반환")
+    void createStore_success() {
+        // given
+        var dto = sampleCreateDTO("store-a", "서울 강남구 역삼동", "KOREAN");
 
-        @Test
-        @DisplayName("유효한 요청이 주어지면 가게를 수정하고 응답을 반환한다")
-        void updateStore_ValidRequest_ReturnsResponse() {
-            // Given
-            String storeName = updateRequestDTO.getStoreCommonRequestDTO().getName();
-            String categoryName = updateRequestDTO.getStoreCommonRequestDTO().getCategory();
-            String storeAddress = updateRequestDTO.getStoreCommonRequestDTO().getAddress();
-            
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            when(storeRepository.existsByNameAndIsDeletedFalse(storeName)).thenReturn(false);
-            when(storeCategoryRepository.findByCategory(categoryName)).thenReturn(Optional.of(storeCategory));
-            
-            try (MockedStatic<StoreConverter> mockedStatic = mockStatic(StoreConverter.class)) {
-                mockedStatic.when(() -> StoreConverter.toStoreUpdateResponseDTO(store)).thenReturn(updateResponseDTO);
+        given(storeRepository.existsByNameAndIsDeletedFalse("store-a")).willReturn(false);
 
-                // When
-                StoreResponseDTO.StoreUpdateResponseDTO result = storeCommandService.updateStore(storeId, updateRequestDTO, currentUser);
+        StoreCategory category = StoreCategory.builder().category("KOREAN").build();
+        given(storeCategoryRepository.findByCategory("KOREAN")).willReturn(Optional.empty());
+        given(storeCategoryRepository.save(any(StoreCategory.class))).willReturn(category);
 
-                // Then
-                assertThat(result).isEqualTo(updateResponseDTO);
-                verify(storeRepository).findById(storeId);
-                verify(store).setStoreCategory(storeCategory);
-                verify(store).update(storeName, storeAddress);
-                verify(storeRepository).save(store);
-            }
-        }
+        UUID regionId = UUID.randomUUID();
+        given(regionService.parseAndSaveRegion("서울 강남구 역삼동")).willReturn(regionId);
 
-        @Test
-        @DisplayName("가게를 찾을 수 없으면 예외를 던진다")
-        void updateStore_StoreNotFound_ThrowsException() {
-            // Given
-            when(storeRepository.findById(storeId)).thenReturn(Optional.empty());
+        Region region = Region.builder().siDo("서울").siGunGu("강남구").eupMyeonDong("역삼동").build();
+        given(regionRepository.findById(regionId)).willReturn(Optional.of(region));
 
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.updateStore(storeId, updateRequestDTO, currentUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.NOT_FOUND, exception.getCode());
-        }
+        given(storeRepository.save(any(Store.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void updateStore_NullUser_ThrowsException() {
-            // Given
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            CurrentUser nullUser = null;
+        // when
+        StoreResponseDTO.StoreCreateResponseDTO res = storeCommandService.createStore(dto, ownerPassport);
 
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.updateStore(storeId, updateRequestDTO, nullUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.UNAUTHORIZED_ACCESS, exception.getCode());
-        }
+        // then
+        assertThat(res.getStoreCommonsBaseResponseDTO().getName()).isEqualTo("store-a");
+        assertThat(res.getStoreCommonMainResponseDTO().getCategory()).isEqualTo("KOREAN");
+        assertThat(res.getCreatedBy()).isEqualTo(ownerId);
 
-        @Test
-        @DisplayName("사용자가 가게 소유자가 아니면 예외를 던진다")
-        void updateStore_UnauthorizedUser_ThrowsException() {
-            // Given
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            CurrentUser unauthorizedUser = new CurrentUser(UUID.randomUUID(), "ROLE_OWNER");
-
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.updateStore(storeId, updateRequestDTO, unauthorizedUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.UNAUTHORIZED_ACCESS, exception.getCode());
-        }
-
-        @Test
-        @DisplayName("이미 존재하는 가게 이름이면 예외를 던진다")
-        void updateStore_DuplicateStoreName_ThrowsException() {
-            // Given
-            String storeName = updateRequestDTO.getStoreCommonRequestDTO().getName();
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            when(storeRepository.existsByNameAndIsDeletedFalse(storeName)).thenReturn(true);
-
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.updateStore(storeId, updateRequestDTO, currentUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.ALREADY_ADD, exception.getCode());
-        }
+        ArgumentCaptor<Store> captor = ArgumentCaptor.forClass(Store.class);
+        verify(storeRepository).save(captor.capture());
+        Store saved = captor.getValue();
+        assertThat(saved.getOwnerId()).isEqualTo(ownerId);
+        assertThat(saved.getRegion()).isEqualTo(region);
+        assertThat(saved.getStoreCategory()).isEqualTo(category);
     }
 
-    @Nested
-    @DisplayName("deleteStore 메소드는")
-    class DeleteStoreTests {
+    @Test
+    @DisplayName("createStore: 인증정보 없음 -> UNAUTHORIZED_ACCESS")
+    void createStore_unauthorized() {
+        var dto = sampleCreateDTO("store-a", "서울 강남구 역삼동", "KOREAN");
+        assertThatThrownBy(() -> storeCommandService.createStore(dto, null))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verifyNoInteractions(storeRepository, regionRepository, regionService, storeCategoryRepository);
+    }
 
-        @Test
-        @DisplayName("유효한 요청이 주어지면 가게를 삭제한다")
-        void deleteStore_ValidRequest_DeletesStore() {
-            // Given
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
+    @Test
+    @DisplayName("createStore: 중복 이름 -> ALREADY_ADD")
+    void createStore_duplicateName() {
+        var dto = sampleCreateDTO("dup-store", "서울 강남구 역삼동", "KOREAN");
+        given(storeRepository.existsByNameAndIsDeletedFalse("dup-store")).willReturn(true);
+        assertThatThrownBy(() -> storeCommandService.createStore(dto, ownerPassport))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.ALREADY_ADD.getMessage());
+        verify(storeRepository, times(1)).existsByNameAndIsDeletedFalse("dup-store");
+        verifyNoMoreInteractions(storeRepository);
+        verifyNoInteractions(regionRepository, regionService, storeCategoryRepository);
+    }
 
-            // When
-            storeCommandService.deleteStore(storeId, currentUser);
+    @Test
+    @DisplayName("createStore: Region 미조회 -> RegionException NOT_FOUND")
+    void createStore_regionNotFound() {
+        var dto = sampleCreateDTO("store-b", "서울 강남구 역삼동", "KOREAN");
 
-            // Then
-            verify(storeRepository).findById(storeId);
-            verify(store).softDelete();
-            verify(storeRepository).save(store);
-        }
+        given(storeRepository.existsByNameAndIsDeletedFalse("store-b")).willReturn(false);
+        given(storeCategoryRepository.findByCategory(anyString())).willReturn(Optional.of(StoreCategory.builder().category("KOREAN").build()));
 
-        @Test
-        @DisplayName("가게를 찾을 수 없으면 예외를 던진다")
-        void deleteStore_StoreNotFound_ThrowsException() {
-            // Given
-            when(storeRepository.findById(storeId)).thenReturn(Optional.empty());
+        UUID regionId = UUID.randomUUID();
+        given(regionService.parseAndSaveRegion(anyString())).willReturn(regionId);
+        given(regionRepository.findById(regionId)).willReturn(Optional.empty());
 
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.deleteStore(storeId, currentUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.NOT_FOUND, exception.getCode());
-        }
+        assertThatThrownBy(() -> storeCommandService.createStore(dto, ownerPassport))
+                .isInstanceOf(RegionException.class)
+                .hasMessageContaining(RegionErrorCode.NOT_FOUND.getMessage());
+    }
 
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void deleteStore_NullUser_ThrowsException() {
-            // Given
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            CurrentUser nullUser = null;
+    @Test
+    @DisplayName("updateStore: 성공적으로 수정 및 응답 반환")
+    void updateStore_success() {
+        UUID storeId = UUID.randomUUID();
+        StoreCategory oldCategory = StoreCategory.builder().category("KOREAN").build();
+        Store store = Store.builder()
+                .name("old")
+                .address("서울 강남구 삼성동")
+                .phone("010-1111-2222")
+                .content("c")
+                .minPrice(1000)
+                .deliveryTip(100)
+                .operationHours("09-18")
+                .closedDays("sun")
+                .storeCategory(oldCategory)
+                .region(Region.builder().siDo("서울").siGunGu("강남구").eupMyeonDong("삼성동").build())
+                .ownerId(ownerId)
+                .build();
 
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.deleteStore(storeId, nullUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.UNAUTHORIZED_ACCESS, exception.getCode());
-        }
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(store));
 
-        @Test
-        @DisplayName("사용자가 가게 소유자가 아니면 예외를 던진다")
-        void deleteStore_UnauthorizedUser_ThrowsException() {
-            // Given
-            when(storeRepository.findById(storeId)).thenReturn(Optional.of(store));
-            CurrentUser unauthorizedUser = new CurrentUser(UUID.randomUUID(), "ROLE_OWNER");
+        StoreCommonRequestDTO common = StoreCommonRequestDTO.builder()
+                .name("new-name")
+                .address("서울 강남구 역삼동")
+                .category("CHINESE")
+                .build();
+        var dto = StoreRequestDTO.StoreUpdateRequestDTO.builder().storeCommonRequestDTO(common).build();
 
-            // When & Then
-            StoreException exception = org.junit.jupiter.api.Assertions.assertThrows(
-                StoreException.class,
-                () -> storeCommandService.deleteStore(storeId, unauthorizedUser)
-            );
-            
-            org.junit.jupiter.api.Assertions.assertEquals(StoreErrorCode.UNAUTHORIZED_ACCESS, exception.getCode());
-        }
+        given(storeRepository.existsByNameAndIsDeletedFalse("new-name")).willReturn(false);
+
+        StoreCategory newCategory = StoreCategory.builder().category("CHINESE").build();
+        given(storeCategoryRepository.findByCategory("CHINESE")).willReturn(Optional.empty());
+        given(storeCategoryRepository.save(any(StoreCategory.class))).willReturn(newCategory);
+
+        given(storeRepository.save(any(Store.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        StoreResponseDTO.StoreUpdateResponseDTO res = storeCommandService.updateStore(storeId, dto, ownerPassport);
+
+        // then
+        assertThat(res.getStoreCommonsBaseResponseDTO().getName()).isEqualTo("new-name");
+        assertThat(res.getCategory()).isEqualTo("CHINESE");
+        assertThat(store.getStoreCategory()).isEqualTo(newCategory);
+        verify(storeRepository).save(any(Store.class));
+    }
+
+    @Test
+    @DisplayName("updateStore: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void updateStore_unauthorized() {
+        UUID storeId = UUID.randomUUID();
+        Store store = Store.builder()
+                .name("old")
+                .address("서울 강남구 삼성동")
+                .phone("010")
+                .content("c")
+                .minPrice(1000)
+                .deliveryTip(100)
+                .operationHours("09-18")
+                .closedDays("sun")
+                .storeCategory(StoreCategory.builder().category("KOREAN").build())
+                .region(Region.builder().siDo("서울").siGunGu("강남구").eupMyeonDong("삼성동").build())
+                .ownerId(UUID.randomUUID()) // 다른 사용자
+                .build();
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(store));
+
+        var dto = StoreRequestDTO.StoreUpdateRequestDTO.builder()
+                .storeCommonRequestDTO(StoreCommonRequestDTO.builder().name("n").address("a").category("c").build())
+                .build();
+
+        assertThatThrownBy(() -> storeCommandService.updateStore(storeId, dto, ownerPassport))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verify(storeRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("updateStore: 중복 이름 -> ALREADY_ADD")
+    void updateStore_duplicateName() {
+        UUID storeId = UUID.randomUUID();
+        Store store = Store.builder()
+                .name("old")
+                .address("a")
+                .phone("p")
+                .content("c")
+                .minPrice(1)
+                .deliveryTip(1)
+                .operationHours("h")
+                .closedDays("d")
+                .storeCategory(StoreCategory.builder().category("KOREAN").build())
+                .region(Region.builder().siDo("s").siGunGu("g").eupMyeonDong("e").build())
+                .ownerId(ownerId)
+                .build();
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(store));
+
+        var dto = StoreRequestDTO.StoreUpdateRequestDTO.builder()
+                .storeCommonRequestDTO(StoreCommonRequestDTO.builder().name("dup").address("a").category("KOREAN").build())
+                .build();
+        given(storeRepository.existsByNameAndIsDeletedFalse("dup")).willReturn(true);
+
+        assertThatThrownBy(() -> storeCommandService.updateStore(storeId, dto, ownerPassport))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.ALREADY_ADD.getMessage());
+        verify(storeRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("deleteStore: 성공적으로 소프트 삭제")
+    void deleteStore_success() {
+        UUID storeId = UUID.randomUUID();
+        Store store = Store.builder()
+                .name("del")
+                .address("addr")
+                .phone("010")
+                .content("c")
+                .minPrice(1)
+                .deliveryTip(1)
+                .operationHours("h")
+                .closedDays("d")
+                .storeCategory(StoreCategory.builder().category("KOREAN").build())
+                .region(Region.builder().siDo("s").siGunGu("g").eupMyeonDong("e").build())
+                .ownerId(ownerId)
+                .build();
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(store));
+        given(storeRepository.save(any(Store.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        storeCommandService.deleteStore(storeId, ownerPassport);
+
+        // then
+        assertThat(store.getIsDeleted()).isTrue();
+        verify(storeRepository).save(store);
+    }
+
+    @Test
+    @DisplayName("deleteStore: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void deleteStore_unauthorized() {
+        UUID storeId = UUID.randomUUID();
+        Store store = Store.builder()
+                .name("del")
+                .address("addr")
+                .phone("010")
+                .content("c")
+                .minPrice(1)
+                .deliveryTip(1)
+                .operationHours("h")
+                .closedDays("d")
+                .storeCategory(StoreCategory.builder().category("KOREAN").build())
+                .region(Region.builder().siDo("s").siGunGu("g").eupMyeonDong("e").build())
+                .ownerId(UUID.randomUUID())
+                .build();
+        given(storeRepository.findById(storeId)).willReturn(Optional.of(store));
+
+        assertThatThrownBy(() -> storeCommandService.deleteStore(storeId, ownerPassport))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verify(storeRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("deleteStore: 존재하지 않음 -> NOT_FOUND")
+    void deleteStore_notFound() {
+        UUID storeId = UUID.randomUUID();
+        given(storeRepository.findById(storeId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> storeCommandService.deleteStore(storeId, ownerPassport))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.NOT_FOUND.getMessage());
     }
 }
+

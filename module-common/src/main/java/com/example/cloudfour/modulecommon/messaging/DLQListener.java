@@ -2,6 +2,7 @@ package com.example.cloudfour.modulecommon.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "app.dlq", name = "enabled", havingValue = "true", matchIfMissing = false)
 @RequiredArgsConstructor
 public class DLQListener {
     

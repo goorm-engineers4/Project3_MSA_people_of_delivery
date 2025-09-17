@@ -63,7 +63,7 @@ public class OrderQueryService {
             log.warn("존재하지 않는 주문 아이템");
             return new OrderItemException(OrderItemErrorCode.NOT_FOUND);
         });
-        if(passport == null || orderItemRepository.existsByUserId(orderItem.getId(), passport.getUserId())){
+        if (passport == null || !orderItemRepository.existsByUserId(orderItem.getId(), passport.getUserId())){
             log.warn("주문 아이템 조회 권한 없음");
             throw new OrderItemException(OrderItemErrorCode.UNAUTHORIZED_ACCESS);
         }

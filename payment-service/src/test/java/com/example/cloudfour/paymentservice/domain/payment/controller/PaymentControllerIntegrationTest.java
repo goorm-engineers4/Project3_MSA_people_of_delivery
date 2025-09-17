@@ -8,6 +8,7 @@ import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentErro
 import com.example.cloudfour.paymentservice.domain.payment.exception.PaymentException;
 import com.example.cloudfour.paymentservice.domain.payment.service.command.PaymentCommandService;
 import com.example.cloudfour.paymentservice.domain.payment.service.query.PaymentQueryService;
+import com.example.cloudfour.paymentservice.domain.payment.service.PaymentProcessService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,9 @@ class PaymentControllerIntegrationTest {
     @Mock
     private PaymentQueryService paymentQueryService;
 
+    @Mock
+    private PaymentProcessService paymentProcessService;
+
     @InjectMocks
     private PaymentController paymentController;
 
@@ -55,7 +59,7 @@ class PaymentControllerIntegrationTest {
     private String orderId;
     private String paymentKey;
     private Integer amount;
-    private CurrentUser currentUser;
+    private com.example.cloudfour.modulecommon.dto.Passport passport;
     private UUID paymentId;
 
     @BeforeEach
@@ -69,10 +73,17 @@ class PaymentControllerIntegrationTest {
         amount = 15000;
         paymentId = UUID.randomUUID();
 
-        currentUser = new CurrentUser(userId, "ROLE_USER");
+        passport = com.example.cloudfour.modulecommon.dto.Passport.builder()
+                .passportId(UUID.randomUUID().toString())
+                .userId(userId)
+                .role("ROLE_CUSTOMER")
+                .issuedAt(java.time.Instant.now())
+                .expiresAt(java.time.Instant.now().plusSeconds(3600))
+                .authLevel("HIGH")
+                .build();
 
         UsernamePasswordAuthenticationToken authentication = 
-            new UsernamePasswordAuthenticationToken(currentUser, null, null);
+            new UsernamePasswordAuthenticationToken(passport, null, java.util.List.of());
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         this.mockMvc = MockMvcBuilders.standaloneSetup(paymentController)
@@ -80,7 +91,7 @@ class PaymentControllerIntegrationTest {
                 .setControllerAdvice(new com.example.cloudfour.modulecommon.apiPayLoad.exception.handler.GlobalExceptionHandler())
                 .build();
 
-        reset(paymentCommandService, paymentQueryService);
+        reset(paymentCommandService, paymentQueryService, paymentProcessService);
     }
 
     @Nested
@@ -91,8 +102,7 @@ class PaymentControllerIntegrationTest {
         @DisplayName("정상적인 결제 승인 요청 성공")
         void confirmPayment_Success() throws Exception {
             // Given
-            PaymentRequestDTO.PaymentConfirmRequestDTO request = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
+            PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO request = PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO.builder()
                     .orderId(orderId)
                     .amount(amount)
                     .build();
@@ -107,7 +117,11 @@ class PaymentControllerIntegrationTest {
                     .approvedAtStr(LocalDateTime.now().toString())
                     .build();
 
-            when(paymentCommandService.confirmPayment(any(PaymentRequestDTO.PaymentConfirmRequestDTO.class), any(UUID.class))).thenReturn(response);
+            PaymentProcessService.PaymentConfirmResult result = PaymentProcessService.PaymentConfirmResult.builder()
+                    .success(true)
+                    .response(response)
+                    .build();
+            when(paymentProcessService.processConfirm(eq(orderId), eq(amount), any(UUID.class))).thenReturn(result);
 
             // When & Then
             mockMvc.perform(post("/api/payments/confirm")
@@ -119,21 +133,24 @@ class PaymentControllerIntegrationTest {
                     .andExpect(jsonPath("$.result.orderId").value(orderId))
                     .andExpect(jsonPath("$.result.amount").value(amount));
 
-            verify(paymentCommandService).confirmPayment(any(PaymentRequestDTO.PaymentConfirmRequestDTO.class), any(UUID.class));
+            verify(paymentProcessService).processConfirm(eq(orderId), eq(amount), any(UUID.class));
         }
 
         @Test
         @DisplayName("서비스에서 예외 발생 시 400 에러")
         void confirmPayment_ServiceException_Returns400() throws Exception {
             // Given
-            PaymentRequestDTO.PaymentConfirmRequestDTO request = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
+            PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO request = PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO.builder()
                     .orderId(orderId)
                     .amount(amount)
                     .build();
 
-            when(paymentCommandService.confirmPayment(any(PaymentRequestDTO.PaymentConfirmRequestDTO.class), any(UUID.class)))
-                    .thenThrow(new PaymentException(PaymentErrorCode.PAYMENT_APPROVAL_FAILED));
+            PaymentProcessService.PaymentConfirmResult result = PaymentProcessService.PaymentConfirmResult.builder()
+                    .success(false)
+                    .exception(new PaymentException(PaymentErrorCode.PAYMENT_APPROVAL_FAILED))
+                    .build();
+            when(paymentProcessService.processConfirm(eq(orderId), eq(amount), any(UUID.class)))
+                    .thenReturn(result);
 
             // When & Then
             mockMvc.perform(post("/api/payments/confirm")
@@ -143,16 +160,14 @@ class PaymentControllerIntegrationTest {
                     .andExpect(jsonPath("$.isSuccess").value(false))
                     .andExpect(jsonPath("$.code").value(PaymentErrorCode.PAYMENT_APPROVAL_FAILED.getCode()));
 
-            verify(paymentCommandService).confirmPayment(any(PaymentRequestDTO.PaymentConfirmRequestDTO.class), any(UUID.class));
+            verify(paymentProcessService).processConfirm(eq(orderId), eq(amount), any(UUID.class));
         }
 
         @Test
         @DisplayName("필수 필드가 누락된 결제 승인 요청 시 400 에러")
         void confirmPayment_MissingRequiredFields_Returns400() throws Exception {
             // Given
-            PaymentRequestDTO.PaymentConfirmRequestDTO request = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
-                    // orderId와 amount 누락
+            PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO request = PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO.builder()
                     .build();
 
             // When & Then
@@ -161,36 +176,17 @@ class PaymentControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
 
-            verify(paymentCommandService, never()).confirmPayment(any(), any());
+            verify(paymentProcessService, never()).processConfirm(anyString(), anyInt(), any(UUID.class));
         }
 
-        @ParameterizedTest
-        @DisplayName("빈 paymentKey로 요청 시 400 에러")
-        @ValueSource(strings = {"", " ", "  "})
-        void confirmPayment_EmptyPaymentKey_Returns400(String emptyKey) throws Exception {
-            // Given
-            PaymentRequestDTO.PaymentConfirmRequestDTO request = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(emptyKey)
-                    .orderId(orderId)
-                    .amount(amount)
-                    .build();
-
-            // When & Then
-            mockMvc.perform(post("/api/payments/confirm")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest());
-
-            verify(paymentCommandService, never()).confirmPayment(any(), any());
-        }
+        // paymentKey 검증은 프론트-서버 사이에서 캐시 기반으로 처리되므로 제거됨
 
         @ParameterizedTest
         @DisplayName("잘못된 amount로 요청 시 400 에러")
         @ValueSource(ints = {-1000, 0, 999})
         void confirmPayment_InvalidAmount_Returns400(int invalidAmount) throws Exception {
             // Given
-            PaymentRequestDTO.PaymentConfirmRequestDTO request = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
+            PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO request = PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO.builder()
                     .orderId(orderId)
                     .amount(invalidAmount)
                     .build();
@@ -201,7 +197,7 @@ class PaymentControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
 
-            verify(paymentCommandService, never()).confirmPayment(any(), any());
+            verify(paymentProcessService, never()).processConfirm(anyString(), anyInt(), any(UUID.class));
         }
 
     }
@@ -523,8 +519,7 @@ class PaymentControllerIntegrationTest {
         @DisplayName("동시에 여러 결제 승인 요청 처리")
         void handleConcurrentPaymentConfirmations_Success() throws Exception {
             // Given
-            PaymentRequestDTO.PaymentConfirmRequestDTO request = PaymentRequestDTO.PaymentConfirmRequestDTO.builder()
-                    .paymentKey(paymentKey)
+            PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO request = PaymentRequestDTO.PaymentConfirmFromFrontendRequestDTO.builder()
                     .orderId(orderId)
                     .amount(amount)
                     .build();
@@ -539,7 +534,11 @@ class PaymentControllerIntegrationTest {
                     .approvedAtStr(LocalDateTime.now().toString())
                     .build();
 
-            when(paymentCommandService.confirmPayment(any(PaymentRequestDTO.PaymentConfirmRequestDTO.class), any(UUID.class))).thenReturn(response);
+            PaymentProcessService.PaymentConfirmResult result = PaymentProcessService.PaymentConfirmResult.builder()
+                    .success(true)
+                    .response(response)
+                    .build();
+            when(paymentProcessService.processConfirm(eq(orderId), eq(amount), any(UUID.class))).thenReturn(result);
 
             // When & Then
             for (int i = 0; i < 3; i++) {
@@ -550,7 +549,7 @@ class PaymentControllerIntegrationTest {
                         .andExpect(jsonPath("$.isSuccess").value(true));
             }
 
-            verify(paymentCommandService, times(3)).confirmPayment(any(PaymentRequestDTO.PaymentConfirmRequestDTO.class), any(UUID.class));
+            verify(paymentProcessService, times(3)).processConfirm(eq(orderId), eq(amount), any(UUID.class));
         }
 
         @Test

@@ -58,14 +58,12 @@ class AuthServiceTest {
         return "email:verify:resend:" + purpose + ":" + emailLowerCase;
     }
 
-    /** 공통 예외 검증 헬퍼: AuthException.code == expected */
     private void assertAuthThrows(Runnable call, AuthErrorCode expected) {
         assertThatThrownBy(() -> call.run())
                 .isInstanceOf(AuthException.class)
                 .hasFieldOrPropertyWithValue("code", expected);
     }
 
-    // -------- Register --------
     @Nested
     @DisplayName("회원가입(register)")
     class Register {
@@ -74,7 +72,7 @@ class AuthServiceTest {
         @DisplayName("이미 존재하는 이메일이면 AuthException(EMAIL_ALREADY_USED)")
         void register_existingEmail_throws() {
             var req = new AuthRequestDTO.RegisterRequestDTO(
-                    emailUpper, "닉", "Pw!234567", "USER", "010-0000-0000"
+                    emailUpper, "닉", "Pw!234567", "ROLE_CUSTOMER", "010-0000-0000"
             );
             when(userClient.existsByEmailBool(emailLower)).thenReturn(true);
 
@@ -85,25 +83,23 @@ class AuthServiceTest {
         @DisplayName("정상 회원가입 시 UserClient.create 호출 후 Converter로 응답 매핑")
         void register_success() {
             var req = new AuthRequestDTO.RegisterRequestDTO(
-                    emailUpper, "닉", "Pw!234567", "USER", "010-0000-0000"
+                    emailUpper, "닉", "Pw!234567", "ROLE_CUSTOMER", "010-0000-0000"
             );
 
             when(userClient.existsByEmailBool(emailLower)).thenReturn(false);
-
-            // userClient.create(...) 가 반환하는 요약 사용자 (record)
+            
             var created = new UserResponseDTO.UserBriefResponseDTO(
-                    uid, emailLower, "USER", "이름", true
+                    uid, emailLower, "ROLE_CUSTOMER", "이름", true
             );
             when(userClient.create(any(UserRequestDTO.CreateUserRequestDTO.class)))
                     .thenReturn(created);
 
-            // Converter static mocking
             try (MockedStatic<AuthConverter> mocked = mockStatic(AuthConverter.class)) {
                 var model = new AuthModelDTO.RegisterResultDTO(
                         created.id(), created.email(), req.nickname(), created.role()
                 );
                 var expected = AuthResponseDTO.AuthRegisterResponseDTO.builder()
-                        .userId(uid).email(emailLower).nickname("닉").role("USER").build();
+                        .userId(uid).email(emailLower).nickname("닉").role("ROLE_CUSTOMER").build();
 
                 mocked.when(() -> AuthConverter.toAuthRegisterResponseDTO(model))
                         .thenReturn(expected);
@@ -115,7 +111,6 @@ class AuthServiceTest {
         }
     }
 
-    // -------- Login --------
     @Nested
     @DisplayName("로그인(login)")
     class Login {
@@ -124,7 +119,7 @@ class AuthServiceTest {
         @DisplayName("이메일 미인증이면 AuthException(EMAIL_NOT_VERIFIED)")
         void login_unverified_throws() {
             var req = new AuthRequestDTO.LoginRequestDTO(emailUpper, "pw!");
-            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", false);
+            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", false);
             when(userClient.byEmail(emailLower)).thenReturn(user);
 
             assertAuthThrows(() -> sut.login(req), AuthErrorCode.EMAIL_NOT_VERIFIED);
@@ -134,7 +129,7 @@ class AuthServiceTest {
         @DisplayName("비밀번호 불일치 시 AuthException(PASSWORD_INVALID)")
         void login_password_invalid_throws() {
             var req = new AuthRequestDTO.LoginRequestDTO(emailLower, "pw!");
-            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
             when(userClient.byEmail(emailLower)).thenReturn(user);
             when(userClient.verifyPassword(uid, "pw!"))
                     .thenReturn(new UserResponseDTO.PasswordVerifyResponseDTO(false));
@@ -146,13 +141,13 @@ class AuthServiceTest {
         @DisplayName("성공 시 Access/Refresh 발급 및 Refresh Redis 저장")
         void login_success_issuesTokensAndSaveRefresh() {
             var req = new AuthRequestDTO.LoginRequestDTO(emailLower, "pw!");
-            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
             when(userClient.byEmail(emailLower)).thenReturn(user);
             when(userClient.verifyPassword(uid, "pw!"))
                     .thenReturn(new UserResponseDTO.PasswordVerifyResponseDTO(true));
 
-            when(jwtService.createAccess(uid, "USER")).thenReturn("access");
-            when(jwtService.createRefresh(uid, "USER")).thenReturn("refresh");
+            when(jwtService.createAccess(uid, "ROLE_CUSTOMER")).thenReturn("access");
+            when(jwtService.createRefresh(uid, "ROLE_CUSTOMER")).thenReturn("refresh");
             when(jwtService.accessTtlSeconds()).thenReturn(3600L);
 
             try (MockedStatic<AuthConverter> mocked = mockStatic(AuthConverter.class)) {
@@ -170,14 +165,13 @@ class AuthServiceTest {
         }
     }
 
-    // -------- Logout --------
     @Test
     @DisplayName("로그아웃 시 사용자 이메일 키의 Refresh 삭제")
     void logout_deletes_refresh() {
         var encoded = "header.body.sig";
         when(jwtService.userId(encoded)).thenReturn(uid.toString());
 
-        var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+        var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
         when(userClient.byId(uid)).thenReturn(user);
 
         sut.logout("Bearer " + encoded);
@@ -185,7 +179,6 @@ class AuthServiceTest {
         verify(redisUtil).delete(emailLower);
     }
 
-    // -------- Refresh Access --------
     @Nested
     @DisplayName("Access 재발급(refreshAccessToken)")
     class RefreshAccess {
@@ -232,7 +225,7 @@ class AuthServiceTest {
                     .build();
             when(jwtService.decode("ref1")).thenReturn(jwt);
 
-            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
             when(userClient.byId(uid)).thenReturn(user);
             when(redisUtil.get(emailLower)).thenReturn("refX");
 
@@ -254,12 +247,12 @@ class AuthServiceTest {
                     .build();
             when(jwtService.decode("ref1")).thenReturn(jwt);
 
-            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
             when(userClient.byId(uid)).thenReturn(user);
 
             when(redisUtil.get(emailLower)).thenReturn("ref1");
-            when(jwtService.createAccess(uid, "USER")).thenReturn("acc2");
-            when(jwtService.createRefresh(uid, "USER")).thenReturn("ref2");
+            when(jwtService.createAccess(uid, "ROLE_CUSTOMER")).thenReturn("acc2");
+            when(jwtService.createRefresh(uid, "ROLE_CUSTOMER")).thenReturn("ref2");
             when(jwtService.accessTtlSeconds()).thenReturn(1800L);
 
             try (MockedStatic<AuthConverter> mocked = mockStatic(AuthConverter.class)) {
@@ -276,12 +269,11 @@ class AuthServiceTest {
         }
     }
 
-    // -------- Change Password --------
     @Test
     @DisplayName("비밀번호 변경 시 UserClient 변경 후 기존 Refresh 삭제")
     void changePassword_deletes_refresh() {
         var req = new AuthRequestDTO.PasswordChangeDto("curr", "new");
-        var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+        var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
         when(userClient.byId(uid)).thenReturn(user);
 
         sut.changePassword(uid, req);
@@ -290,7 +282,6 @@ class AuthServiceTest {
         verify(redisUtil).delete(emailLower);
     }
 
-    // -------- Email Verify --------
     @Nested
     @DisplayName("이메일 인증 코드 발송(sendVerificationEmail)")
     class SendVerificationEmail {
@@ -408,7 +399,7 @@ class AuthServiceTest {
             when(redisUtil.incrWithTtl(triesKey(purpose, emailLower), Duration.ofMinutes(10))).thenReturn(1L);
             when(hasher.hash("123456")).thenReturn("H");
 
-            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+            var user = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
             when(userClient.byEmail(emailLower)).thenReturn(user);
 
             sut.verifyEmailCode(req);
@@ -420,7 +411,6 @@ class AuthServiceTest {
         }
     }
 
-    // -------- Change Email --------
     @Nested
     @DisplayName("이메일 변경 시작(startEmailChange)")
     class StartEmailChange {
@@ -428,7 +418,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("기존 이메일과 동일하면 AuthException(EMAIL_SAME_AS_OLD)")
         void same_as_old() {
-            var current = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "USER", "이름", true);
+            var current = new UserResponseDTO.UserBriefResponseDTO(uid, emailLower, "ROLE_CUSTOMER", "이름", true);
             when(userClient.byId(uid)).thenReturn(current);
 
             assertAuthThrows(() -> sut.startEmailChange(uid, emailUpper), AuthErrorCode.EMAIL_SAME_AS_OLD);
@@ -437,7 +427,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("이미 사용 중인 이메일이면 AuthException(EMAIL_IN_USE)")
         void email_in_use() {
-            when(userClient.byId(uid)).thenReturn(new UserResponseDTO.UserBriefResponseDTO(uid, "old@x.com", "USER", "이름", true));
+            when(userClient.byId(uid)).thenReturn(new UserResponseDTO.UserBriefResponseDTO(uid, "old@x.com", "ROLE_CUSTOMER", "이름", true));
             when(userClient.existsByEmailBool(emailLower)).thenReturn(true);
 
             assertAuthThrows(() -> sut.startEmailChange(uid, emailUpper), AuthErrorCode.EMAIL_IN_USE);
@@ -446,7 +436,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("쿨다운 중이면 AuthException(EMAIL_RESEND_COOLDOWN)")
         void cooldown() {
-            when(userClient.byId(uid)).thenReturn(new UserResponseDTO.UserBriefResponseDTO(uid, "old@x.com", "USER", "이름", true));
+            when(userClient.byId(uid)).thenReturn(new UserResponseDTO.UserBriefResponseDTO(uid, "old@x.com", "ROLE_CUSTOMER", "이름", true));
             when(userClient.existsByEmailBool(emailLower)).thenReturn(false);
 
             var purpose = VerificationPurpose.CHANGE_EMAIL.name();
@@ -458,7 +448,7 @@ class AuthServiceTest {
         @Test
         @DisplayName("성공 시 코드 저장 & 메일 발송 & 시도키 초기화")
         void success() throws Exception {
-            when(userClient.byId(uid)).thenReturn(new UserResponseDTO.UserBriefResponseDTO(uid, "old@x.com", "USER", "이름", true));
+            when(userClient.byId(uid)).thenReturn(new UserResponseDTO.UserBriefResponseDTO(uid, "old@x.com", "ROLE_CUSTOMER", "이름", true));
             when(userClient.existsByEmailBool(emailLower)).thenReturn(false);
 
             var purpose = VerificationPurpose.CHANGE_EMAIL.name();

@@ -100,6 +100,15 @@ app:
     enabled: true
   saga:
     enabled: true
+    payment:
+      enabled: false
+  dlq:
+    enabled: true
+    monitor:
+      enabled: true
+      alert-threshold: 1
+      # 필요시 알림 최소 간격(ms) 조절 (기본 30000 = 5분)
+      alert-interval-ms: 300000
 
 
 order:

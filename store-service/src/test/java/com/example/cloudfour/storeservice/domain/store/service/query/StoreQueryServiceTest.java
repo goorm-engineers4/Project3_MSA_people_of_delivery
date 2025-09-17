@@ -1,33 +1,31 @@
 package com.example.cloudfour.storeservice.domain.store.service.query;
 
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
+import com.example.cloudfour.storeservice.client.UserClient;
 import com.example.cloudfour.storeservice.domain.collection.document.StoreDocument;
 import com.example.cloudfour.storeservice.domain.collection.repository.query.StoreSearchRepository;
 import com.example.cloudfour.storeservice.domain.common.RegionResponseDTO;
-import com.example.cloudfour.storeservice.domain.commondto.StoreCartResponseDTO;
+import com.example.cloudfour.storeservice.domain.common.StoreCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionErrorCode;
 import com.example.cloudfour.storeservice.domain.region.exception.RegionException;
-import com.example.cloudfour.storeservice.domain.store.converter.StoreConverter;
 import com.example.cloudfour.storeservice.domain.store.dto.StoreResponseDTO;
 import com.example.cloudfour.storeservice.domain.store.entity.Store;
+import com.example.cloudfour.storeservice.domain.store.entity.StoreCategory;
 import com.example.cloudfour.storeservice.domain.store.exception.StoreErrorCode;
 import com.example.cloudfour.storeservice.domain.store.exception.StoreException;
 import com.example.cloudfour.storeservice.domain.store.repository.StoreRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.data.domain.SliceImpl;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,413 +33,199 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("StoreQueryService 단위테스트")
 class StoreQueryServiceTest {
 
-    @Mock
-    private StoreSearchRepository storeSearchRepository;
+    @Mock private StoreSearchRepository storeMongoRepository;
+    @Mock private StoreRepository query;
+    @Mock private UserClient userClient;
 
-    @Mock
-    private StoreRepository storeRepository;
+    @InjectMocks private StoreQueryService storeQueryService;
 
-    @Mock
-    private RestTemplate restTemplate;
-
-    @InjectMocks
-    private StoreQueryService storeQueryService;
-
-    private UUID storeId;
-    private UUID categoryId;
+    private Passport passport;
     private UUID userId;
-    private CurrentUser currentUser;
-    private Store store;
-    private StoreDocument storeDocument;
-    private RegionResponseDTO regionResponseDTO;
-    private LocalDateTime now;
-    private List<StoreDocument> storeDocuments;
-    private Slice<StoreDocument> storeDocumentSlice;
-    private StoreResponseDTO.StoreCursorListResponseDTO storeCursorListResponseDTO;
-    private StoreResponseDTO.StoreDetailResponseDTO storeDetailResponseDTO;
-    private StoreCartResponseDTO storeCartResponseDTO;
-    private StoreResponseDTO.StoreListResponseDTO storeListResponseDTO;
 
     @BeforeEach
     void setUp() {
-        // Initialize test data
-        storeId = UUID.randomUUID();
-        categoryId = UUID.randomUUID();
         userId = UUID.randomUUID();
-        currentUser = new CurrentUser(userId, "testUser");
-        now = LocalDateTime.now();
-
-        // Mock store
-        store = mock(Store.class);
-        lenient().when(store.getId()).thenReturn(storeId);
-        lenient().when(store.getName()).thenReturn("Test Store");
-        lenient().when(store.getOwnerId()).thenReturn(userId);
-
-        // Mock store document
-        storeDocument = mock(StoreDocument.class);
-        lenient().when(storeDocument.getId()).thenReturn(storeId.toString());
-        lenient().when(storeDocument.getStoreId()).thenReturn(storeId);
-        lenient().when(storeDocument.getUserId()).thenReturn(userId);
-        lenient().when(storeDocument.getName()).thenReturn("Test Store");
-        lenient().when(storeDocument.getAddress()).thenReturn("Test Address");
-        lenient().when(storeDocument.getPhone()).thenReturn("123-456-7890");
-        lenient().when(storeDocument.getContent()).thenReturn("Test Content");
-        lenient().when(storeDocument.getMinPrice()).thenReturn(10000);
-        lenient().when(storeDocument.getDeliveryTip()).thenReturn(2000);
-        lenient().when(storeDocument.getRating()).thenReturn(4.5f);
-        lenient().when(storeDocument.getLikeCount()).thenReturn(100);
-        lenient().when(storeDocument.getReviewCount()).thenReturn(50);
-        lenient().when(storeDocument.getSiDo()).thenReturn("Test SiDo");
-        lenient().when(storeDocument.getSiGunGu()).thenReturn("Test SiGunGu");
-        lenient().when(storeDocument.getEupMyeonDong()).thenReturn("Test EupMyeonDong");
-        lenient().when(storeDocument.getCreatedAt()).thenReturn(now);
-
-        // Mock region response
-        regionResponseDTO = mock(RegionResponseDTO.class);
-        lenient().when(regionResponseDTO.getSiDo()).thenReturn("Test SiDo");
-        lenient().when(regionResponseDTO.getSiGunGu()).thenReturn("Test SiGunGu");
-        lenient().when(regionResponseDTO.getEupMyeonDong()).thenReturn("Test EupMyeonDong");
-
-        // Mock response DTOs - 실제 인스턴스 생성하거나 적절한 mock 설정
-        storeCursorListResponseDTO = mock(StoreResponseDTO.StoreCursorListResponseDTO.class);
-        lenient().when(storeCursorListResponseDTO.getStoreList()).thenReturn(new ArrayList<>());
-        lenient().when(storeCursorListResponseDTO.getNextCursor()).thenReturn(now);
-        
-        storeDetailResponseDTO = mock(StoreResponseDTO.StoreDetailResponseDTO.class);
-        
-        storeCartResponseDTO = mock(StoreCartResponseDTO.class);
-        lenient().when(storeCartResponseDTO.getStoreId()).thenReturn(storeId);
-        lenient().when(storeCartResponseDTO.getUserId()).thenReturn(userId);
-        lenient().when(storeCartResponseDTO.getName()).thenReturn("Test Store");
-        
-        storeListResponseDTO = mock(StoreResponseDTO.StoreListResponseDTO.class);
-        lenient().when(storeListResponseDTO.getCreatedAt()).thenReturn(now);
-
-        // Create list of store documents
-        storeDocuments = new ArrayList<>();
-        storeDocuments.add(storeDocument);
-
-        // Mock slice of store documents
-        storeDocumentSlice = mock(Slice.class);
-        lenient().when(storeDocumentSlice.getContent()).thenReturn(storeDocuments);
-        lenient().when(storeDocumentSlice.hasNext()).thenReturn(false);
-        lenient().when(storeDocumentSlice.isEmpty()).thenReturn(false);
+        passport = Passport.builder().userId(userId).build();
     }
 
-    @Nested
-    @DisplayName("getAllStores 메소드는")
-    class GetAllStoresTests {
-
-        @Test
-        @DisplayName("유효한 요청이 주어지면 가게 목록을 반환한다")
-        void getAllStores_ValidRequest_ReturnsStores() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            String keyword = "Test";
-
-            // RestTemplate mock 설정
-            when(restTemplate.getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class)))
-                    .thenReturn(regionResponseDTO);
-            
-            // Repository mock 설정 - 모든 매개변수를 matcher로 통일
-            when(storeSearchRepository.findAllStoreByKeyWordAndRegion(
-                    eq(keyword), eq(cursor), any(Pageable.class),
-                    anyString(), anyString(), anyString()))
-                    .thenReturn(storeDocumentSlice);
-
-            // Static mock 설정
-            try (MockedStatic<StoreConverter> mockedStatic = mockStatic(StoreConverter.class)) {
-                mockedStatic.when(() -> StoreConverter.toStoreListResponseDTO(any(StoreDocument.class)))
-                        .thenReturn(storeListResponseDTO);
-                mockedStatic.when(() -> StoreConverter.toStoreCursorListResponseDTO(anyList(), any()))
-                        .thenReturn(storeCursorListResponseDTO);
-
-                // When
-                StoreResponseDTO.StoreCursorListResponseDTO result = 
-                    storeQueryService.getAllStores(cursor, size, keyword, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(storeCursorListResponseDTO);
-                
-                // Verification - 모든 매개변수를 matcher로 통일
-                verify(restTemplate).getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class));
-                verify(storeSearchRepository).findAllStoreByKeyWordAndRegion(
-                        eq(keyword), eq(cursor), any(Pageable.class),
-                        anyString(), anyString(), anyString());
-                
-                // Static method 호출 검증
-                mockedStatic.verify(() -> StoreConverter.toStoreListResponseDTO(any(StoreDocument.class)));
-                mockedStatic.verify(() -> StoreConverter.toStoreCursorListResponseDTO(anyList(), any()));
-            }
-        }
-
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void getAllStores_NullUser_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            String keyword = "Test";
-            CurrentUser nullUser = null;
-
-            // When & Then
-            assertThatThrownBy(() -> storeQueryService.getAllStores(cursor, size, keyword, nullUser))
-                    .isInstanceOf(StoreException.class)
-                    .hasFieldOrPropertyWithValue("code", StoreErrorCode.UNAUTHORIZED_ACCESS);
-            
-            // ✅ 구체적인 매개변수 타입 지정
-            verify(restTemplate, never()).getForObject(anyString(), any(Class.class), any(Object[].class));
-            verify(storeSearchRepository, never()).findAllStoreByKeyWordAndRegion(
-                    any(), any(), any(), any(), any(), any());
-
-        }
-
-        @Test
-        @DisplayName("지역이 존재하지 않으면 예외를 던진다")
-        void getAllStores_RegionNotFound_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            String keyword = "Test";
-
-            when(restTemplate.getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class)))
-                    .thenReturn(null);
-
-            // When & Then
-            assertThatThrownBy(() -> storeQueryService.getAllStores(cursor, size, keyword, currentUser))
-                    .isInstanceOf(RegionException.class)
-                    .hasFieldOrPropertyWithValue("code", RegionErrorCode.NOT_FOUND);
-            
-            verify(restTemplate).getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class));
-            verify(storeSearchRepository, never()).findAllStoreByKeyWordAndRegion(
-                    any(), any(), any(), any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("커서가 null이면 현재 시간을 사용한다")
-        void getAllStores_NullCursor_UsesCurrentTime() {
-            // Given
-            LocalDateTime cursor = null;
-            int size = 10;
-            String keyword = "Test";
-
-            when(restTemplate.getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class)))
-                    .thenReturn(regionResponseDTO);
-            when(storeSearchRepository.findAllStoreByKeyWordAndRegion(
-                    eq(keyword), any(LocalDateTime.class), any(Pageable.class),
-                    anyString(), anyString(), anyString()))
-                    .thenReturn(storeDocumentSlice);
-
-            try (MockedStatic<StoreConverter> mockedStatic = mockStatic(StoreConverter.class)) {
-                mockedStatic.when(() -> StoreConverter.toStoreListResponseDTO(any(StoreDocument.class)))
-                        .thenReturn(storeListResponseDTO);
-                mockedStatic.when(() -> StoreConverter.toStoreCursorListResponseDTO(anyList(), any()))
-                        .thenReturn(storeCursorListResponseDTO);
-
-                // When
-                StoreResponseDTO.StoreCursorListResponseDTO result = 
-                    storeQueryService.getAllStores(cursor, size, keyword, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(storeCursorListResponseDTO);
-                verify(restTemplate).getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class));
-                verify(storeSearchRepository).findAllStoreByKeyWordAndRegion(
-                        eq(keyword), any(LocalDateTime.class), any(Pageable.class),
-                        anyString(), anyString(), anyString());
-            }
-        }
+    private RegionResponseDTO sampleRegion() {
+        return RegionResponseDTO.builder()
+                .siDo("서울")
+                .siGunGu("강남구")
+                .eupMyeonDong("역삼동")
+                .build();
     }
 
-    @Nested
-    @DisplayName("getStoresByCategory 메소드는")
-    class GetStoresByCategoryTests {
-
-        @Test
-        @DisplayName("유효한 요청이 주어지면 카테고리별 가게 목록을 반환한다")
-        void getStoresByCategory_ValidRequest_ReturnsStores() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-
-            when(restTemplate.getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class)))
-                    .thenReturn(regionResponseDTO);
-
-            when(storeSearchRepository.findAllStoreByCategoryAndCursor(
-                    eq(categoryId), eq(cursor), any(Pageable.class),
-                    anyString(), anyString(), anyString()))
-                    .thenReturn(storeDocumentSlice);
-
-            try (MockedStatic<StoreConverter> converterMock = mockStatic(StoreConverter.class);
-                 MockedStatic<StoreResponseDTO.StoreCursorListResponseDTO> responseMock = 
-                         mockStatic(StoreResponseDTO.StoreCursorListResponseDTO.class)) {
-        
-                // ✅ Static method stubbing 올바른 방식
-                converterMock.when(() -> StoreConverter.toStoreListResponseDTO(storeDocument))
-                        .thenReturn(storeListResponseDTO);
-        
-                // ✅ Static factory method stubbing
-                List<StoreResponseDTO.StoreListResponseDTO> expectedList = List.of(storeListResponseDTO);
-                responseMock.when(() -> StoreResponseDTO.StoreCursorListResponseDTO.of(expectedList, null))
-                        .thenReturn(storeCursorListResponseDTO);
-
-                // When
-                StoreResponseDTO.StoreCursorListResponseDTO result =
-                        storeQueryService.getStoresByCategory(categoryId, cursor, size, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(storeCursorListResponseDTO);
-                verify(restTemplate).getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class));
-                verify(storeSearchRepository).findAllStoreByCategoryAndCursor(
-                        eq(categoryId), eq(cursor), any(Pageable.class),
-                        anyString(), anyString(), anyString());
-        
-                // ✅ Static method verify
-                converterMock.verify(() -> StoreConverter.toStoreListResponseDTO(storeDocument));
-                responseMock.verify(() -> StoreResponseDTO.StoreCursorListResponseDTO.of(expectedList, null));
-            }
-        }
-
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void getStoresByCategory_NullUser_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-            CurrentUser nullUser = null;
-
-            // When & Then
-            assertThatThrownBy(() -> storeQueryService.getStoresByCategory(categoryId, cursor, size, nullUser))
-                    .isInstanceOf(StoreException.class)
-                    .hasFieldOrPropertyWithValue("code", StoreErrorCode.UNAUTHORIZED_ACCESS);
-            
-            // ✅ 구체적인 매개변수 타입 지정
-            verify(restTemplate, never()).getForObject(anyString(), any(Class.class), any(Object[].class));
-            verify(storeSearchRepository, never()).findAllStoreByCategoryAndCursor(
-                    any(), any(), any(), any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("지역이 존재하지 않으면 예외를 던진다")
-        void getStoresByCategory_RegionNotFound_ThrowsException() {
-            // Given
-            LocalDateTime cursor = now;
-            int size = 10;
-
-            when(restTemplate.getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class)))
-                    .thenReturn(null);
-
-            // When & Then
-            assertThatThrownBy(() -> storeQueryService.getStoresByCategory(categoryId, cursor, size, currentUser))
-                    .isInstanceOf(RegionException.class)
-                    .hasFieldOrPropertyWithValue("code", RegionErrorCode.NOT_FOUND);
-            
-            verify(restTemplate).getForObject(anyString(), eq(RegionResponseDTO.class), any(Object[].class));
-            verify(storeSearchRepository, never()).findAllStoreByCategoryAndCursor(
-                    any(), any(), any(), any(), any(), any());
-        }
-
+    private StoreDocument sampleDoc(String name, LocalDateTime createdAt) {
+        return StoreDocument.builder()
+                .storeId(UUID.randomUUID())
+                .userId(userId)
+                .name(name)
+                .address("서울 강남구 역삼동")
+                .phone("010-1234-5678")
+                .content("content")
+                .minPrice(1000)
+                .deliveryTip(100)
+                .rating(4.5f)
+                .likeCount(10)
+                .reviewCount(5)
+                .siDo("서울")
+                .siGunGu("강남구")
+                .eupMyeonDong("역삼동")
+                .pictureURL("pic")
+                .createdAt(createdAt)
+                .storeCategory(StoreDocument.StoreCategory.builder()
+                        .id(UUID.randomUUID())
+                        .storeCategoryName("KOREAN")
+                        .build())
+                .build();
     }
 
-    @Nested
-    @DisplayName("getStoreById 메소드는")
-    class GetStoreByIdTests {
+    @Test
+    @DisplayName("getAllStores: 성공 - 키워드/지역 기준 페이지 조회")
+    void getAllStores_success() {
+        // given
+        given(userClient.getUserRegion(userId)).willReturn(sampleRegion());
+        LocalDateTime now = LocalDateTime.now();
+        StoreDocument d1 = sampleDoc("A", now.minusMinutes(5));
+        StoreDocument d2 = sampleDoc("B", now.minusMinutes(1));
+        Slice<StoreDocument> slice = new SliceImpl<>(List.of(d1, d2), PageRequest.of(0, 2), true);
+        given(storeMongoRepository.findAllStoreByKeyWordAndRegion(eq("chicken"), any(), any(), eq("서울"), eq("강남구"), eq("역삼동")))
+                .willReturn(slice);
 
-        @Test
-        @DisplayName("유효한 요청이 주어지면 가게 상세 정보를 반환한다")
-        void getStoreById_ValidRequest_ReturnsStore() {
-            // Given
-            when(storeSearchRepository.findStoreByStoreId(eq(storeId)))
-                    .thenReturn(Optional.of(storeDocument));
+        // when
+        StoreResponseDTO.StoreCursorListResponseDTO res = storeQueryService.getAllStores(null, 2, "chicken", passport);
 
-            try (MockedStatic<StoreConverter> mockedStatic = mockStatic(StoreConverter.class)) {
-                mockedStatic.when(() -> StoreConverter.documentToStoreDetailResponseDTO(any(StoreDocument.class)))
-                        .thenReturn(storeDetailResponseDTO);
-
-                // When
-                StoreResponseDTO.StoreDetailResponseDTO result = storeQueryService.getStoreById(storeId, currentUser);
-
-                // Then
-                assertThat(result).isEqualTo(storeDetailResponseDTO);
-                verify(storeSearchRepository).findStoreByStoreId(eq(storeId));
-                mockedStatic.verify(() -> StoreConverter.documentToStoreDetailResponseDTO(any(StoreDocument.class)));
-            }
-        }
-
-        @Test
-        @DisplayName("사용자가 null이면 예외를 던진다")
-        void getStoreById_NullUser_ThrowsException() {
-            // Given
-            CurrentUser nullUser = null;
-
-            // When & Then
-            assertThatThrownBy(() -> storeQueryService.getStoreById(storeId, nullUser))
-                    .isInstanceOf(StoreException.class)
-                    .hasFieldOrPropertyWithValue("code", StoreErrorCode.UNAUTHORIZED_ACCESS);
-            
-            verify(storeSearchRepository, never()).findStoreByStoreId(any());
-        }
-
-        @Test
-        @DisplayName("가게가 존재하지 않으면 예외를 던진다")
-        void getStoreById_StoreNotFound_ThrowsException() {
-            // Given
-            when(storeSearchRepository.findStoreByStoreId(eq(storeId)))
-                    .thenReturn(Optional.empty());
-
-            // When & Then
-            assertThatThrownBy(() -> storeQueryService.getStoreById(storeId, currentUser))
-                    .isInstanceOf(StoreException.class)
-                    .hasFieldOrPropertyWithValue("code", StoreErrorCode.NOT_FOUND);
-            
-            verify(storeSearchRepository).findStoreByStoreId(eq(storeId));
-        }
+        // then
+        assertThat(res.getStoreList()).hasSize(2);
+        assertThat(res.getStoreList().get(0).getStoreCommonsBaseResponseDTO().getName()).isEqualTo("A");
+        assertThat(res.getStoreList().get(1).getStoreCommonsBaseResponseDTO().getName()).isEqualTo("B");
+        assertThat(res.getNextCursor()).isEqualTo(d2.getCreatedAt());
     }
 
-    @Nested
-    @DisplayName("findStore 메소드는")
-    class FindStoreTests {
+    @Test
+    @DisplayName("getAllStores: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void getAllStores_unauthorized() {
+        assertThatThrownBy(() -> storeQueryService.getAllStores(null, 10, null, null))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verifyNoInteractions(userClient, storeMongoRepository);
+    }
 
-        @Test
-        @DisplayName("유효한 요청이 주어지면 가게 정보를 반환한다")
-        void findStore_ValidRequest_ReturnsStore() {
-            // Given
-            when(storeRepository.findByIdAndIsDeletedFalse(eq(storeId)))
-                    .thenReturn(Optional.of(store));
+    @Test
+    @DisplayName("getAllStores: 사용자 지역 없음 -> RegionException NOT_FOUND")
+    void getAllStores_regionNotFound() {
+        given(userClient.getUserRegion(userId)).willReturn(null);
+        assertThatThrownBy(() -> storeQueryService.getAllStores(null, 10, null, passport))
+                .isInstanceOf(RegionException.class)
+                .hasMessageContaining(RegionErrorCode.NOT_FOUND.getMessage());
+    }
 
-            try (MockedStatic<StoreConverter> mockedStatic = mockStatic(StoreConverter.class)) {
-                mockedStatic.when(() -> StoreConverter.toFindStoreDTO(any(Store.class)))
-                        .thenReturn(storeCartResponseDTO);
+    @Test
+    @DisplayName("getStoresByCategory: 성공 - 카테고리/지역 기준 페이지 조회")
+    void getStoresByCategory_success() {
+        UUID categoryId = UUID.randomUUID();
+        given(userClient.getUserRegion(userId)).willReturn(sampleRegion());
+        LocalDateTime now = LocalDateTime.now();
+        StoreDocument d1 = sampleDoc("C", now.minusMinutes(3));
+        Slice<StoreDocument> slice = new SliceImpl<>(List.of(d1), PageRequest.of(0, 1), false);
+        given(storeMongoRepository.findAllStoreByCategoryAndCursor(eq(categoryId), any(), any(), eq("서울"), eq("강남구"), eq("역삼동")))
+                .willReturn(slice);
 
-                // When
-                StoreCartResponseDTO result = storeQueryService.findStore(storeId);
+        StoreResponseDTO.StoreCursorListResponseDTO res = storeQueryService.getStoresByCategory(categoryId, null, 1, passport);
+        assertThat(res.getStoreList()).hasSize(1);
+        assertThat(res.getStoreList().get(0).getStoreCommonsBaseResponseDTO().getName()).isEqualTo("C");
+        assertThat(res.getNextCursor()).isNull();
+    }
 
-                // Then
-                assertThat(result).isEqualTo(storeCartResponseDTO);
-                verify(storeRepository).findByIdAndIsDeletedFalse(eq(storeId));
-                mockedStatic.verify(() -> StoreConverter.toFindStoreDTO(any(Store.class)));
-            }
-        }
+    @Test
+    @DisplayName("getStoresByCategory: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void getStoresByCategory_unauthorized() {
+        assertThatThrownBy(() -> storeQueryService.getStoresByCategory(UUID.randomUUID(), null, 10, null))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+        verifyNoInteractions(userClient, storeMongoRepository);
+    }
 
-        @Test
-        @DisplayName("가게가 존재하지 않으면 예외를 던진다")
-        void findStore_StoreNotFound_ThrowsException() {
-            // Given
-            when(storeRepository.findByIdAndIsDeletedFalse(eq(storeId)))
-                    .thenReturn(Optional.empty());
+    @Test
+    @DisplayName("getStoresByCategory: 사용자 지역 없음 -> RegionException NOT_FOUND")
+    void getStoresByCategory_regionNotFound() {
+        given(userClient.getUserRegion(userId)).willReturn(null);
+        assertThatThrownBy(() -> storeQueryService.getStoresByCategory(UUID.randomUUID(), null, 10, passport))
+                .isInstanceOf(RegionException.class)
+                .hasMessageContaining(RegionErrorCode.NOT_FOUND.getMessage());
+    }
 
-            // When & Then
-            assertThatThrownBy(() -> storeQueryService.findStore(storeId))
-                    .isInstanceOf(StoreException.class)
-                    .hasFieldOrPropertyWithValue("code", StoreErrorCode.NOT_FOUND);
-            
-            verify(storeRepository).findByIdAndIsDeletedFalse(eq(storeId));
-        }
+    @Test
+    @DisplayName("getStoreById: 성공 - 상세 조회")
+    void getStoreById_success() {
+        UUID storeId = UUID.randomUUID();
+        StoreDocument doc = sampleDoc("Detail", LocalDateTime.now());
+        given(storeMongoRepository.findStoreByStoreId(storeId)).willReturn(Optional.of(doc));
+
+        StoreResponseDTO.StoreDetailResponseDTO res = storeQueryService.getStoreById(storeId, passport);
+        assertThat(res.getStoreCommonsBaseResponseDTO().getName()).isEqualTo("Detail");
+        assertThat(res.getUserId()).isEqualTo(userId);
+        assertThat(res.getStoreCommonMainResponseDTO().getCategory()).isEqualTo("KOREAN");
+    }
+
+    @Test
+    @DisplayName("getStoreById: 권한 없음 -> UNAUTHORIZED_ACCESS")
+    void getStoreById_unauthorized() {
+        assertThatThrownBy(() -> storeQueryService.getStoreById(UUID.randomUUID(), null))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.UNAUTHORIZED_ACCESS.getMessage());
+    }
+
+    @Test
+    @DisplayName("getStoreById: 가게 없음 -> NOT_FOUND")
+    void getStoreById_notFound() {
+        UUID storeId = UUID.randomUUID();
+        given(storeMongoRepository.findStoreByStoreId(storeId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> storeQueryService.getStoreById(storeId, passport))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("findStore: 성공 - 장바구니용 응답 반환")
+    void findStore_success() {
+        UUID storeId = UUID.randomUUID();
+        Store store = Store.builder()
+                .name("S")
+                .address("A")
+                .phone("P")
+                .content("C")
+                .minPrice(1)
+                .deliveryTip(1)
+                .operationHours("H")
+                .closedDays("D")
+                .storeCategory(StoreCategory.builder().category("KOREAN").build())
+                .region(com.example.cloudfour.storeservice.domain.region.entity.Region.builder().siDo("s").siGunGu("g").eupMyeonDong("e").build())
+                .ownerId(userId)
+                .build();
+        given(query.findByIdAndIsDeletedFalse(storeId)).willReturn(Optional.of(store));
+
+        StoreCartResponseDTO res = storeQueryService.findStore(storeId);
+        assertThat(res.getUserId()).isEqualTo(userId);
+        assertThat(res.getName()).isEqualTo("S");
+        assertThat(res.getStoreId()).isEqualTo(store.getId());
+    }
+
+    @Test
+    @DisplayName("findStore: 가게 없음 -> NOT_FOUND")
+    void findStore_notFound() {
+        UUID storeId = UUID.randomUUID();
+        given(query.findByIdAndIsDeletedFalse(storeId)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> storeQueryService.findStore(storeId))
+                .isInstanceOf(StoreException.class)
+                .hasMessageContaining(StoreErrorCode.NOT_FOUND.getMessage());
     }
 }
+

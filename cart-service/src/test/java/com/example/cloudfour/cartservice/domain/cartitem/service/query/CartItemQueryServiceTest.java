@@ -6,7 +6,7 @@ import com.example.cloudfour.cartservice.domain.cartitem.exception.CartItemExcep
 import com.example.cloudfour.cartservice.domain.cartitem.exception.CartItemErrorCode;
 import com.example.cloudfour.cartservice.domain.cartitem.repository.CartItemRepository;
 import com.example.cloudfour.cartservice.domain.cartitem.converter.CartItemConverter;
-import com.example.cloudfour.modulecommon.dto.CurrentUser;
+import com.example.cloudfour.modulecommon.dto.Passport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -36,7 +36,7 @@ class CartItemQueryServiceTest {
 
     private UUID userId;
     private UUID cartItemId;
-    private CurrentUser currentUser;
+    private Passport currentUser;
     private CartItem cartItem;
     private CartItemResponseDTO.CartItemListResponseDTO cartItemListResponseDTO;
 
@@ -44,7 +44,7 @@ class CartItemQueryServiceTest {
     void setUp() {
         userId = UUID.randomUUID();
         cartItemId = UUID.randomUUID();
-        currentUser = new CurrentUser(userId, "testUser");
+        currentUser = Passport.builder().userId(userId).role("ROLE_CUSTOMER").build();
 
         // Mock CartItem
         cartItem = mock(CartItem.class);
@@ -86,7 +86,7 @@ class CartItemQueryServiceTest {
         @DisplayName("사용자가 null이면 예외를 던진다")
         void getCartItemById_NullUser_ThrowsException() {
             // Given
-            CurrentUser nullUser = null;
+            Passport nullUser = null;
 
             // When & Then
             assertThatThrownBy(() -> cartItemQueryService.getCartItemById(cartItemId, nullUser))
@@ -100,14 +100,15 @@ class CartItemQueryServiceTest {
         @DisplayName("사용자 ID가 null이면 예외를 던진다")
         void getCartItemById_NullUserId_ThrowsException() {
             // Given
-            CurrentUser invalidUser = new CurrentUser(null, "testUser");
+            Passport invalidUser = Passport.builder().userId(null).role("ROLE_CUSTOMER").build();
 
             // When & Then
             assertThatThrownBy(() -> cartItemQueryService.getCartItemById(cartItemId, invalidUser))
                     .isInstanceOf(CartItemException.class)
                     .hasFieldOrPropertyWithValue("code", CartItemErrorCode.UNAUTHORIZED_ACCESS);
 
-            verifyNoInteractions(cartItemRepository);
+            verify(cartItemRepository).existsByCartItemAndUser(eq(cartItemId), isNull());
+            verify(cartItemRepository, never()).findByIdWithOptions(any());
         }
 
         @Test

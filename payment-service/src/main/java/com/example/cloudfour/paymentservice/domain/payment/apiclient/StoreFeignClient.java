@@ -9,11 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@FeignClient(
-        name = "store-service",
-        url="http://store-service.app.svc.cluster.local:80/internal/stores",
-        configuration = FeignConfig.class
-)
+@FeignClient(name="store-service", url = "http://store-service.app.svc.cluster.local:80/internal/stores", configuration = FeignConfig.class)
 @CircuitBreaker(name="store-circuit")
 public interface StoreFeignClient {
     @GetMapping("/{storeId}/exists")

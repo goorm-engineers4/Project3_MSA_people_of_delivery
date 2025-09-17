@@ -87,3 +87,15 @@ spring:
 
 passport:
   secret-key: ${PASSPORT_SECRET}
+
+app:
+  kafka:
+    enabled: false
+  outbox:
+    enabled: false
+  saga:
+    enabled: false
+  dlq:
+    enabled: false
+    monitor:
+      enabled: false
