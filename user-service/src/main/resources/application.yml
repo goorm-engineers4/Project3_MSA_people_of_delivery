@@ -21,7 +21,7 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
-      - org.springframework.boot.autoconfigure.kafka.KafkaStreamsAutoConfiguration
+
   jpa:
     hibernate.ddl-auto: update
     show-sql: true

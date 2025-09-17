@@ -81,11 +81,6 @@ kafka:
 
     paymentCommandsDLQ: payment.commands.dlq.v1
 
-app:
-  eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
-  outbox:
-    enabled: true
-
 resilience4j:
   circuitbreaker:
     configs:
@@ -104,6 +99,21 @@ resilience4j:
         base-config: default
       user-service:
         base-config: default
+
+alert:
+  discord:
+    webhookUrl: ${DISCORD_WEBHOOK}
+
+app:
+  eventPublishEnabled: ${EVENT_PUBLISH_ENABLED:true}
+  outbox:
+    enabled: true
+  dlq:
+    enabled: true
+    monitor:
+      enabled: true
+      alert-threshold: 1  # 1개 이상 발생하면 즉시 알림
+      alert-interval-ms: 60000  # 1분 간격으로 알림
 
 passport:
   secret-key: ${PASSPORT_SECRET}
