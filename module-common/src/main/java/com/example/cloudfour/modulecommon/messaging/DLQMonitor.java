@@ -106,7 +106,6 @@ public class DLQMonitor {
         long currentTime = System.currentTimeMillis();
         long lastAlert = lastAlertTime.get();
         
-        // 마지막 알림 후 일정 시간이 지났는지 확인
         if (currentTime - lastAlert > alertIntervalMs) {
             if (lastAlertTime.compareAndSet(lastAlert, currentTime)) {
                 sendAlert(topic, dlqMessage, count, attempt);
