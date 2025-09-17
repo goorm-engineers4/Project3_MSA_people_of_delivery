@@ -15,7 +15,7 @@ spring:
             - id: auth-service-public
               uri: http://auth-service.app.svc.cluster.local:80
               predicates:
-                - Path=/auth/login, /auth/register/**, /auth/refresh, /auth/email/send, /auth/email/verify, /.well-known/**, /api/passports/**, /internal/**
+                - Path=/auth/login, /auth/register/**, /auth/refresh, /auth/email/send, /auth/email/change/verify, /auth/email/verify, /.well-known/**, /api/passports/**, /internal/**
               filters:
                 - RewritePath=/(?<segment>.*),/${segment}
 
@@ -23,7 +23,7 @@ spring:
             - id: auth-service-secured
               uri: http://auth-service.app.svc.cluster.local:80
               predicates:
-                - Path=/auth/**
+                - Path=/auth/email/change/start, /auth/logout, /auth/password
               filters:
                 - AuthFilter
                 - RewritePath=/(?<segment>.*),/${segment}
@@ -41,7 +41,7 @@ spring:
             - id: store-service
               uri: http://store-service.app.svc.cluster.local:80
               predicates:
-                - Path=/stores/** , /stores
+                - Path=/stores/** , /stores, /menus, /menus/**, /reviews/**, /reviews
               filters:
                 - AuthFilter
                 - RewritePath=/(?<segment>.*),/${segment}
@@ -50,7 +50,7 @@ spring:
             - id: cart-service
               uri: http://cart-service.app.svc.cluster.local:80
               predicates:
-                - Path=/cart/**
+                - Path=/carts/**, /carts, /cartItems/**, /cartItems, /orders, /orders/**
               filters:
                 - AuthFilter
                 - RewritePath=/(?<segment>.*),/${segment}
