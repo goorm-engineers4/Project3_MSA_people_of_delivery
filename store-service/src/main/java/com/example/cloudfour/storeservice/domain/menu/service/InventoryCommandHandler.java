@@ -57,6 +57,11 @@ public class InventoryCommandHandler {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             if (!idempotencyService.markIfNotProcessed("inventory-command-handler", envelope.getMeta().getMsgId(), topic)) {
                 log.warn("중복 이벤트 스킵: consumer=inventory-command-handler, msgId={}", envelope.getMeta().getMsgId());
@@ -102,13 +107,16 @@ public class InventoryCommandHandler {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
-            if (envelope != null && envelope.getMeta() != null) {
-                if (!idempotencyService.markIfNotProcessed("inventory-payment-event-handler", envelope.getMeta().getMsgId(), topic)) {
-                    log.warn("중복 이벤트 스킵: consumer=inventory-payment-event-handler, msgId={}", envelope.getMeta().getMsgId());
-                    acknowledgment.acknowledge();
-                    return;
-                }
+            if (!idempotencyService.markIfNotProcessed("inventory-payment-event-handler", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=inventory-payment-event-handler, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
             }
             
             Object payload = envelope.getPayload();

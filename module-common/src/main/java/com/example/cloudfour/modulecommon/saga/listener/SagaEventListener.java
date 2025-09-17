@@ -48,12 +48,17 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
+            messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
                 log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
                 acknowledgment.acknowledge();
                 return;
             }
-            messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
@@ -110,12 +115,17 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
+            messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
                 log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
                 acknowledgment.acknowledge();
                 return;
             }
-            messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
@@ -205,12 +215,17 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
+            messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
                 log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
                 acknowledgment.acknowledge();
                 return;
             }
-            messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();

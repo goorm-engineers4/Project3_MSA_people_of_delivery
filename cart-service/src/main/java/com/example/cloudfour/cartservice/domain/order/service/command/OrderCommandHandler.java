@@ -47,6 +47,11 @@ public class OrderCommandHandler {
             Acknowledgment acknowledgment) {
         
         try {
+            if (envelope == null || envelope.getMeta() == null) {
+                log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             
             Object payload = envelope.getPayload();
