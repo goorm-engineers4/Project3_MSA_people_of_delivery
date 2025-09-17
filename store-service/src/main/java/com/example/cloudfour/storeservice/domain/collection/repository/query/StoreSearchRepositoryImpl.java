@@ -46,15 +46,13 @@ public class StoreSearchRepositoryImpl extends QuerydslRepositorySupport impleme
                 Aggregation.project("id", "storeId", "userId", "name", "address", "phone", "content",
                                 "minPrice", "deliveryTip", "rating", "likeCount", "reviewCount",
                                 "OperationHours", "closedDays", "siDo", "siGunGu", "eupMyeonDong",
-                                "pictureURL", "createdAt", "storeCategory", "menus", "reviews")
+                                "pictureURL", "createdAt", "storeCategory", "reviews")
                         .and(ArrayOperators.Filter.filter("menus")
                                 .as("m")
                                 .by(ComparisonOperators.Ne.valueOf("m.menuStatus")
                                         .notEqualTo(MenuStatus.숨김.name())))
-                        .as("menus"),
-                UnsetOperation.unset("menus.menuOptions")
+                        .as("menus")
         );
-
         AggregationResults<StoreDocument> results = mongoTemplate.aggregate(aggregation, "store-service", StoreDocument.class);
         StoreDocument mapped = results.getUniqueMappedResult();
         return Optional.ofNullable(mapped);
