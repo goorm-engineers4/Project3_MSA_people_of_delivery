@@ -41,7 +41,7 @@ spring:
             - id: store-service
               uri: http://store-service.app.svc.cluster.local:80
               predicates:
-                - Path=/stores/**
+                - Path=/stores/** , /stores
               filters:
                 - AuthFilter
                 - RewritePath=/(?<segment>.*),/${segment}
