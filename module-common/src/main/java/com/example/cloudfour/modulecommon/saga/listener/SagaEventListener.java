@@ -23,6 +23,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -39,6 +40,7 @@ public class SagaEventListener {
 
     @KafkaListener(topics = "${kafka.topics.orderEvents:order.events.v1}", 
                    groupId = "order-saga-orchestrator")
+    @Transactional
     public void handleOrderCreated(
             @Payload Envelope<Object> envelope,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -93,10 +95,11 @@ public class SagaEventListener {
             acknowledgment.acknowledge();
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("주문 생성 이벤트 처리 실패: error={}", e.getMessage(), e);
 
@@ -106,6 +109,7 @@ public class SagaEventListener {
 
     @KafkaListener(topics = "${kafka.topics.inventoryEvents:inventory.events.v1}", 
                    groupId = "order-saga-orchestrator")
+    @Transactional
     public void handleInventoryEvent(
             @Payload Envelope<Object> envelope,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -146,10 +150,11 @@ public class SagaEventListener {
             }
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("재고 이벤트 처리 실패: error={}", e.getMessage(), e);
 
@@ -206,6 +211,7 @@ public class SagaEventListener {
 
     @KafkaListener(topics = "${kafka.topics.paymentEvents:payment.events.v1}", 
                    groupId = "order-saga-orchestrator")
+    @Transactional
     public void handlePaymentEvent(
             @Payload Envelope<Object> envelope,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -242,10 +248,11 @@ public class SagaEventListener {
             }
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("결제 이벤트 처리 실패: error={}", e.getMessage(), e);
 
