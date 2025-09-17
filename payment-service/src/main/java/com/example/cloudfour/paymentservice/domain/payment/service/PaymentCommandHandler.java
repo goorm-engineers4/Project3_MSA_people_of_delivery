@@ -61,8 +61,7 @@ public class PaymentCommandHandler {
         try {
             if (envelope == null || envelope.getMeta() == null) {
                 log.warn("유효하지 않은 메시지(envelope/meta null) 수신: topic={}, key={}", topic, key);
-                acknowledgment.acknowledge();
-                return;
+                throw new IllegalArgumentException("유효하지 않은 메시지(envelope/meta null)");
             }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             if (!idempotencyService.markIfNotProcessed("payment-command-handler", envelope.getMeta().getMsgId(), topic)) {
@@ -86,10 +85,11 @@ public class PaymentCommandHandler {
             }
             
         } catch (Exception e) {
+            String msgId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getMsgId() : null;
+            String sagaId = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getSagaId() : null;
+            String type = (envelope != null && envelope.getMeta() != null) ? envelope.getMeta().getType() : null;
             messageConsumer.logMessageProcessingError(
-                    topic, key, envelope.getMeta().getMsgId(), 
-                    envelope.getMeta().getSagaId(), 
-                    envelope.getMeta().getType(), e);
+                    topic, key, msgId, sagaId, type, e);
             
             log.error("결제 커맨드 처리 실패: error={}", e.getMessage(), e);
             throw new RuntimeException("결제 커맨드 처리 실패", e);
