@@ -1,6 +1,6 @@
 package com.example.cloudfour.storeservice.domain.menu.service.query;
 
-import com.example.cloudfour.storeservice.domain.commondto.MenuCartResponseDTO;
+import com.example.cloudfour.storeservice.domain.common.MenuCartResponseDTO;
 import com.example.cloudfour.storeservice.domain.menu.converter.MenuConverter;
 import com.example.cloudfour.storeservice.domain.menu.entity.Menu;
 import com.example.cloudfour.storeservice.domain.menu.exception.MenuErrorCode;
