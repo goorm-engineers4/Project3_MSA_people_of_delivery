@@ -35,6 +35,7 @@ public class SagaEventListener {
     private final ObjectMapper objectMapper;
     private final OutboxService outboxService;
     private final SagaAwareDLQHandler sagaAwareDLQHandler;
+    private final com.example.cloudfour.modulecommon.idempotency.MessageIdempotencyService idempotencyService;
 
     @KafkaListener(topics = "${kafka.topics.orderEvents:order.events.v1}", 
                    groupId = "order-saga-orchestrator")
@@ -47,6 +48,11 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             
             Object payload = envelope.getPayload();
@@ -104,6 +110,11 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             
             Object payload = envelope.getPayload();
@@ -194,6 +205,11 @@ public class SagaEventListener {
             Acknowledgment acknowledgment) {
         
         try {
+            if (!idempotencyService.markIfNotProcessed("order-saga-orchestrator", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=order-saga-orchestrator, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
             
             Object payload = envelope.getPayload();
@@ -410,7 +426,6 @@ public class SagaEventListener {
 
     private void handleMessageFailure(String topic, String key, Envelope<Object> envelope,
                                       Exception error, Acknowledgment acknowledgment) {
-        // 컨테이너의 DefaultErrorHandler가 재시도/최종 DLQ 라우팅을 처리하도록 위임
         throw new RuntimeException("사가 이벤트 처리 실패", error);
     }
 }

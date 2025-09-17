@@ -7,6 +7,7 @@ import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
 import com.example.cloudfour.modulecommon.messaging.SagaAwareDLQHandler;
 import com.example.cloudfour.modulecommon.outbox.service.OutboxService;
 import com.example.cloudfour.modulecommon.schedule.ScheduledTaskService;
+import com.example.cloudfour.modulecommon.idempotency.MessageIdempotencyService;
 import com.example.cloudfour.paymentservice.domain.payment.converter.PaymentEventConverter;
 import com.example.cloudfour.paymentservice.domain.payment.dto.PaymentRequestDTO;
 import com.example.cloudfour.paymentservice.domain.payment.entity.Payment;
@@ -41,6 +42,7 @@ public class PaymentCommandHandler {
     private final ObjectMapper objectMapper;
     private final SagaAwareDLQHandler sagaAwareDLQHandler;
     private final ScheduledTaskService scheduledTaskService;
+    private final MessageIdempotencyService idempotencyService;
     
     @Value("${kafka.topics.paymentEvents:payment.events.v1}")
     private String paymentEventsTopic;
@@ -58,6 +60,13 @@ public class PaymentCommandHandler {
         
         try {
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
+            if (envelope != null && envelope.getMeta() != null) {
+                if (!idempotencyService.markIfNotProcessed("payment-command-handler", envelope.getMeta().getMsgId(), topic)) {
+                    log.warn("중복 이벤트 스킵: consumer=payment-command-handler, msgId={}", envelope.getMeta().getMsgId());
+                    acknowledgment.acknowledge();
+                    return;
+                }
+            }
             
             Object payload = envelope.getPayload();
             

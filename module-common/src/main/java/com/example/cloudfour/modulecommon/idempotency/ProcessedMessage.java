@@ -1,0 +1,44 @@
+package com.example.cloudfour.modulecommon.idempotency;
+
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "processed_messages",
+       uniqueConstraints = @UniqueConstraint(name = "uk_consumer_msg", columnNames = {"consumer_name", "msg_id"}))
+public class ProcessedMessage {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(name = "consumer_name", nullable = false, length = 100)
+    private String consumerName;
+
+    @Column(name = "msg_id", nullable = false, length = 200)
+    private String msgId;
+
+    @Column(name = "topic", nullable = false, length = 200)
+    private String topic;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+}
+

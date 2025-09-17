@@ -5,6 +5,7 @@ import com.example.cloudfour.modulecommon.messaging.MessageConsumer;
 import com.example.cloudfour.modulecommon.messaging.SagaAwareDLQHandler;
 import com.example.cloudfour.modulecommon.messaging.inventory.InventoryCommands;
 import com.example.cloudfour.modulecommon.messaging.inventory.InventoryEvents;
+import com.example.cloudfour.modulecommon.idempotency.MessageIdempotencyService;
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
 import com.example.cloudfour.storeservice.domain.menu.service.command.StockCommandService;
 import com.example.cloudfour.storeservice.domain.menu.service.RedisInventoryService;
@@ -40,6 +41,7 @@ public class InventoryCommandHandler {
     private final MessageConsumer messageConsumer;
     private final SagaAwareDLQHandler sagaAwareDLQHandler;
     private final ObjectMapper objectMapper;
+    private final MessageIdempotencyService idempotencyService;
     
     @Value("${kafka.topics.inventoryEvents:inventory.events.v1}")
     private String inventoryEventsTopic;
@@ -56,6 +58,11 @@ public class InventoryCommandHandler {
         
         try {
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
+            if (!idempotencyService.markIfNotProcessed("inventory-command-handler", envelope.getMeta().getMsgId(), topic)) {
+                log.warn("중복 이벤트 스킵: consumer=inventory-command-handler, msgId={}", envelope.getMeta().getMsgId());
+                acknowledgment.acknowledge();
+                return;
+            }
             
             Object payload = envelope.getPayload();
 
@@ -96,6 +103,13 @@ public class InventoryCommandHandler {
         
         try {
             messageConsumer.logMessageReceived(envelope, topic, partition, offset, key);
+            if (envelope != null && envelope.getMeta() != null) {
+                if (!idempotencyService.markIfNotProcessed("inventory-payment-event-handler", envelope.getMeta().getMsgId(), topic)) {
+                    log.warn("중복 이벤트 스킵: consumer=inventory-payment-event-handler, msgId={}", envelope.getMeta().getMsgId());
+                    acknowledgment.acknowledge();
+                    return;
+                }
+            }
             
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
