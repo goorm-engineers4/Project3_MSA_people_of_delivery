@@ -20,18 +20,6 @@ public class ScheduledTaskService {
     private final TaskScheduler taskScheduler;
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
-    public void scheduleOrderTimeout(String orderId, int timeoutMinutes, Runnable task) {
-        cancelOrderTimeout(orderId);
-        
-        Instant timeoutTime = Instant.now().plus(Duration.ofMinutes(timeoutMinutes));
-        ScheduledFuture<?> scheduledTask = taskScheduler.schedule(task, timeoutTime);
-        
-        scheduledTasks.put(orderId, scheduledTask);
-        
-        log.info("주문 타임아웃 스케줄 등록: orderId={}, timeoutMinutes={}, scheduledAt={}", 
-                orderId, timeoutMinutes, timeoutTime);
-    }
-
     public void scheduleOrderTimeout(String orderId, double timeoutMinutes, Runnable task) {
         cancelOrderTimeout(orderId);
         

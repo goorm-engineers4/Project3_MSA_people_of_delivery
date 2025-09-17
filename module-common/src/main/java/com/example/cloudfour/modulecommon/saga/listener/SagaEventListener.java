@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.saga", name = "enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(prefix = "app.kafka", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class SagaEventListener {
     
     private final SagaOrchestrator sagaOrchestrator;
@@ -367,7 +368,8 @@ public class SagaEventListener {
             
             log.info("재고 commit 실패 이벤트 처리: orderId={}, reason={}", orderId, reason);
 
-            publishOrderCanceledEvent(orderId, reason);
+            // 재고 커밋 실패 시 주문 취소 커맨드 발행(오케스트레이터)
+            sagaOrchestrator.handleInventoryCommitFailed(orderId, envelope.getMeta().getMsgId(), reason);
             
             acknowledgment.acknowledge();
             

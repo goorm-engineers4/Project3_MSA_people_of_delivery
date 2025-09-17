@@ -10,8 +10,8 @@ public class OrderCommandConverter {
     public static OrderCommands.ApproveOrder toApproveOrderCommand(String orderId, String userId, String storeId) {
         return OrderCommands.ApproveOrder.builder()
                 .orderId(UUID.fromString(orderId))
-                .userId(UUID.fromString(userId))
-                .storeId(UUID.fromString(storeId))
+                .userId(parseUuidOrNull(userId))
+                .storeId(parseUuidOrNull(storeId))
                 .requestedAt(Instant.now())
                 .build();
     }
@@ -19,10 +19,18 @@ public class OrderCommandConverter {
     public static OrderCommands.CancelOrder toCancelOrderCommand(String orderId, String userId, String storeId, String reason) {
         return OrderCommands.CancelOrder.builder()
                 .orderId(UUID.fromString(orderId))
-                .userId(UUID.fromString(userId))
-                .storeId(UUID.fromString(storeId))
+                .userId(parseUuidOrNull(userId))
+                .storeId(parseUuidOrNull(storeId))
                 .reason(reason)
                 .requestedAt(Instant.now())
                 .build();
+    }
+
+    private static UUID parseUuidOrNull(String val) {
+        try {
+            return (val == null || val.isBlank()) ? null : UUID.fromString(val);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

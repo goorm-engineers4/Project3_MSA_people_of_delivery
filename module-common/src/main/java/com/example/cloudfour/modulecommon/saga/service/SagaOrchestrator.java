@@ -136,8 +136,15 @@ public class SagaOrchestrator {
         try {
             SagaState sagaState = sagaStateRepository.findBySagaId(orderId)
                     .orElseThrow(() -> new RuntimeException("사가 상태를 찾을 수 없습니다: " + orderId));
-            // 결제 승인 시점에는 재고 Commit을 선행해야 함. 여기서는 사가 진행만 표시.
-            sagaState.updateStatus(SagaStatus.IN_PROGRESS);
+            // 완료된 사가에 대한 중복/지연 승인 이벤트는 무시
+            if (sagaState.getStatus() == SagaStatus.COMPLETED) {
+                log.info("이미 완료된 사가의 PaymentAuthorized 무시: orderId={}", orderId);
+                return;
+            }
+            // 결제 승인 시점에는 재고 Commit을 선행해야 함. STARTED 상태에서만 진행 중으로 승격
+            if (sagaState.getStatus() == SagaStatus.STARTED) {
+                sagaState.updateStatus(SagaStatus.IN_PROGRESS);
+            }
             sagaState.updateLastProcessedMsgId(msgId);
             sagaStateRepository.save(sagaState);
             
@@ -260,7 +267,6 @@ public class SagaOrchestrator {
             log.info("결제 정보 저장 시작: orderId={}, userId={}, storeId={}, amount={}", 
                     orderId, userId, storeId, amount);
 
-            // 1. 결제 정보만 저장 (토스 결제창은 프론트엔드에서 직접 호출)
             PaymentCommands.CreatePayment createPaymentCommand = PaymentCommandConverter.toCreatePaymentCommand(orderId, userId, storeId, amount);
             
             messagePublisher.publishCommand(
@@ -277,6 +283,36 @@ public class SagaOrchestrator {
         } catch (Exception e) {
             log.error("결제 정보 저장 실패: orderId={}, error={}", orderId, e.getMessage(), e);
             handleSagaFailure(orderId, "결제 정보 저장 실패: " + e.getMessage());
+        }
+    }
+    @Transactional
+    public void handleInventoryCommitFailed(String orderId, String msgId, String reason) {
+        try {
+            SagaState sagaState = sagaStateRepository.findBySagaId(orderId)
+                    .orElseThrow(() -> new RuntimeException("사가 상태를 찾을 수 없습니다: " + orderId));
+
+            String userId = SagaDataConverter.extractUserIdFromSagaData(sagaState.getSagaData());
+            String storeId = SagaDataConverter.extractStoreIdFromSagaData(sagaState.getSagaData());
+
+            OrderCommands.CancelOrder cancelCommand = OrderCommandConverter.toCancelOrderCommand(orderId, userId, storeId, reason);
+
+            messagePublisher.publishCommand(
+                    "order.commands.v1",
+                    orderId,
+                    cancelCommand,
+                    "order-saga-orchestrator",
+                    orderId,
+                    msgId
+            );
+
+            sagaState.updateStatus(SagaStatus.FAILED);
+            sagaState.updateLastProcessedMsgId(msgId);
+            sagaStateRepository.save(sagaState);
+
+            log.info("재고 커밋 실패 → 주문 취소 커맨드 발행: orderId={}, reason={}", orderId, reason);
+
+        } catch (Exception e) {
+            log.error("재고 커밋 실패 처리 중 오류: orderId={}, error={}", orderId, e.getMessage(), e);
         }
     }
 }
