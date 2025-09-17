@@ -341,11 +341,10 @@ public class SagaEventListener {
                 event = (InventoryEvents.InventoryCommitted) payload;
             }
             String orderId = event.getOrderId().toString();
-            
             log.info("재고 commit 성공 이벤트 처리: orderId={}", orderId);
 
-            publishOrderApprovedEvent(orderId);
-            
+            sagaOrchestrator.handleInventoryCommitted(orderId, envelope.getMeta().getMsgId());
+
             acknowledgment.acknowledge();
             
         } catch (Exception e) {
@@ -396,29 +395,6 @@ public class SagaEventListener {
         } catch (Exception e) {
             log.error("재고 해제 완료 이벤트 처리 실패: error={}", e.getMessage(), e);
             acknowledgment.acknowledge();
-        }
-    }
-
-    private void publishOrderApprovedEvent(String orderId) {
-        try {
-            OrderEvents.OrderApproved event = OrderEvents.OrderApproved.builder()
-                    .orderId(UUID.fromString(orderId))
-                    .approvedAt(Instant.now())
-                    .build();
-            
-            outboxService.saveEvent(
-                    orderId,
-                    "Order",
-                    "OrderApproved",
-                    event,
-                    "order.events.v1",
-                    orderId
-            );
-            
-            log.info("OrderApproved 이벤트 발행 완료: orderId={}", orderId);
-            
-        } catch (Exception e) {
-            log.error("OrderApproved 이벤트 발행 실패: orderId={}, error={}", orderId, e.getMessage(), e);
         }
     }
 

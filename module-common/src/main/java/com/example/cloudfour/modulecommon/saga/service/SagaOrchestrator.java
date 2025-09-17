@@ -136,11 +136,29 @@ public class SagaOrchestrator {
         try {
             SagaState sagaState = sagaStateRepository.findBySagaId(orderId)
                     .orElseThrow(() -> new RuntimeException("사가 상태를 찾을 수 없습니다: " + orderId));
+            // 결제 승인 시점에는 재고 Commit을 선행해야 함. 여기서는 사가 진행만 표시.
+            sagaState.updateStatus(SagaStatus.IN_PROGRESS);
+            sagaState.updateLastProcessedMsgId(msgId);
+            sagaStateRepository.save(sagaState);
+            
+            log.info("결제 승인 이벤트 처리(사가 진행 중): orderId={}", orderId);
+            
+        } catch (Exception e) {
+            log.error("결제 승인 성공 처리 실패: orderId={}, error={}", orderId, e.getMessage(), e);
+            handleSagaFailure(orderId, "결제 승인 성공 처리 실패: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public void handleInventoryCommitted(String orderId, String msgId) {
+        try {
+            SagaState sagaState = sagaStateRepository.findBySagaId(orderId)
+                    .orElseThrow(() -> new RuntimeException("사가 상태를 찾을 수 없습니다: " + orderId));
 
             String userId = SagaDataConverter.extractUserIdFromSagaData(sagaState.getSagaData());
             String storeId = SagaDataConverter.extractStoreIdFromSagaData(sagaState.getSagaData());
             OrderCommands.ApproveOrder approveCommand = OrderCommandConverter.toApproveOrderCommand(orderId, userId, storeId);
-            
+
             messagePublisher.publishCommand(
                     "order.commands.v1",
                     orderId,
@@ -153,12 +171,12 @@ public class SagaOrchestrator {
             sagaState.updateStatus(SagaStatus.COMPLETED);
             sagaState.updateLastProcessedMsgId(msgId);
             sagaStateRepository.save(sagaState);
-            
-            log.info("주문 사가 완료: orderId={}", orderId);
-            
+
+            log.info("재고 커밋 이후 주문 승인 커맨드 발행: orderId={}", orderId);
+
         } catch (Exception e) {
-            log.error("결제 승인 성공 처리 실패: orderId={}, error={}", orderId, e.getMessage(), e);
-            handleSagaFailure(orderId, "결제 승인 성공 처리 실패: " + e.getMessage());
+            log.error("재고 커밋 후 주문 승인 처리 실패: orderId={}, error={}", orderId, e.getMessage(), e);
+            handleSagaFailure(orderId, "재고 커밋 후 주문 승인 처리 실패: " + e.getMessage());
         }
     }
 

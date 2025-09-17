@@ -7,6 +7,8 @@ import com.example.cloudfour.modulecommon.messaging.inventory.InventoryCommands;
 import com.example.cloudfour.modulecommon.messaging.inventory.InventoryEvents;
 import com.example.cloudfour.modulecommon.idempotency.MessageIdempotencyService;
 import com.example.cloudfour.modulecommon.messaging.payment.PaymentEvents;
+import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import com.example.cloudfour.storeservice.domain.menu.service.command.StockCommandService;
 import com.example.cloudfour.storeservice.domain.menu.service.RedisInventoryService;
 import com.example.cloudfour.storeservice.domain.menu.service.event.InventoryEventService;
@@ -25,6 +27,9 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,6 +47,7 @@ public class InventoryCommandHandler {
     private final SagaAwareDLQHandler sagaAwareDLQHandler;
     private final ObjectMapper objectMapper;
     private final MessageIdempotencyService idempotencyService;
+    private final RedisTemplate<String, String> redisTemplate;
     
     @Value("${kafka.topics.inventoryEvents:inventory.events.v1}")
     private String inventoryEventsTopic;
@@ -121,8 +127,8 @@ public class InventoryCommandHandler {
             Object payload = envelope.getPayload();
             String eventType = envelope.getMeta().getType();
 
-            if ("PaymentCompleted".equals(eventType)) {
-                handleCommitInventory(payload);
+            if ("PaymentAuthorized".equals(eventType)) {
+                handleCommitInventoryFromAuthorized(payload);
             }
             
             acknowledgment.acknowledge();
@@ -266,6 +272,81 @@ public class InventoryCommandHandler {
         } catch (Exception e) {
             log.error("재고 commit 처리 중 오류: event={}, error={}", event, e.getMessage(), e);
             throw new StockException(StockErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    private void handleCommitInventoryFromAuthorized(Object payload) {
+        log.info("PaymentAuthorized 수신에 따른 재고 commit 처리 시작");
+        try {
+            PaymentEvents.PaymentAuthorized event;
+            if (payload instanceof LinkedHashMap) {
+                event = objectMapper.convertValue(payload, PaymentEvents.PaymentAuthorized.class);
+            } else {
+                event = (PaymentEvents.PaymentAuthorized) payload;
+            }
+
+            UUID orderId = event.getOrderId();
+            UUID storeId = event.getStoreId();
+
+            List<PaymentEvent.PaymentCompletedEvent.OrderItem> orderItems = fetchReservedItemsFromRedis(orderId);
+            if (orderItems.isEmpty()) {
+                log.warn("주문별 예약 정보가 없습니다: orderId={}", orderId);
+                inventoryEventService.publishInventoryCommitFailed(orderId, storeId, "예약 정보 없음");
+                return;
+            }
+
+            boolean success = stockCommandService.decreaseListStock(orderItems);
+            if (success) {
+                List<InventoryEvents.InventoryCommitted.CommittedItem> committedItems = orderItems.stream()
+                        .map(item -> InventoryEvents.InventoryCommitted.CommittedItem.builder()
+                                .menuId(item.getMenuId())
+                                .menuName(getMenuName(item.getMenuId()))
+                                .quantity(item.getQuantity().intValue())
+                                .build())
+                        .toList();
+                inventoryEventService.publishInventoryCommitted(orderId, storeId, committedItems);
+                log.info("재고 commit 완료: orderId={}", orderId);
+            } else {
+                inventoryEventService.publishInventoryCommitFailed(orderId, storeId, "재고 차감 실패");
+                log.warn("재고 commit 실패: orderId={}", orderId);
+            }
+        } catch (Exception e) {
+            log.error("PaymentAuthorized 기반 재고 commit 처리 중 오류: error={}", e.getMessage(), e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    private List<PaymentEvent.PaymentCompletedEvent.OrderItem>
+    fetchReservedItemsFromRedis(UUID orderId) {
+        final String ORDER_RESERVATION_KEY_PREFIX = "order:rsrv:";
+        String orderReservationKey = ORDER_RESERVATION_KEY_PREFIX + orderId;
+        try {
+            HashOperations<String, String, String> ops = redisTemplate.opsForHash();
+            Map<String, String> map = ops.entries(orderReservationKey);
+            List<PaymentEvent.PaymentCompletedEvent.OrderItem> items = new ArrayList<>();
+            for (var entry : map.entrySet()) {
+                String menuIdStr = entry.getKey();
+                String qtyStr = entry.getValue();
+                try {
+                    UUID menuId = UUID.fromString(menuIdStr);
+                    Long qty = Long.valueOf(qtyStr);
+                    UUID stockId = menuRepository.findById(menuId)
+                            .map(m -> m.getStock().getId())
+                            .orElseThrow(() -> new StockException(StockErrorCode.NOT_FOUND));
+                    var item = PaymentEvent.PaymentCompletedEvent.OrderItem.builder()
+                            .menuId(menuId)
+                            .stockId(stockId)
+                            .menuName(getMenuName(menuId))
+                            .quantity(qty)
+                            .price(null)
+                            .build();
+                    items.add(item);
+                } catch (Exception ignore) {}
+            }
+            return items;
+        } catch (Exception e) {
+            log.error("Redis 주문 예약 항목 조회 실패 - orderId: {}", orderId, e);
+            return Collections.emptyList();
         }
     }
     
