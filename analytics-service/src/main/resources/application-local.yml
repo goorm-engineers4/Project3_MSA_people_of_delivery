@@ -1,0 +1,41 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+  datasource:
+    url: jdbc:postgresql://localhost:5433/common_db
+    username: user
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,info
+
+app:
+  sla:
+    batch:
+      runOnStartup: true
+
+kafka:
+  topics:
+    orderEvents: order.events.v1
+    inventoryEvents: inventory.events.v1
+    paymentEvents: payment.events.v1
+    slaDurations: analytics.sla-durations.v1
+    slaViolations: analytics.sla-violations.v1
+
+sla:
+  thresholds:
+    createdToReservedMs: 600000
+    reservedToAuthorizedMs: 300000
+    authorizedToCommittedMs: 600000
+    reservedToReleasedMs: 600000
+
