@@ -212,15 +212,28 @@ public class InventoryCommandHandler {
     }
     
     private void handleReleaseInventory(InventoryCommands.ReleaseInventory command) {
-        log.info("재고 해제 처리 시작: orderId={}", command.getOrderId());
-        
+        log.info("재고 해제 이벤트 발행 시작: orderId={}", command.getOrderId());
+
         try {
-            redisInventoryService.releaseReservation(command.getOrderId());
-            
-            log.info("재고 해제 완료: orderId={}", command.getOrderId());
-            
+            List<InventoryEvents.InventoryReleased.ReleasedItem> releasedItems =
+                    (command.getItems() == null ? java.util.Collections.<InventoryCommands.ReleaseInventory.ReleaseItem>emptyList() : command.getItems())
+                            .stream()
+                            .map(item -> InventoryEventConverter.createReleasedItem(
+                                    item.getMenuId(),
+                                    getMenuName(item.getMenuId()),
+                                    item.getQuantity()))
+                            .toList();
+
+            inventoryEventService.publishInventoryReleased(
+                    command.getOrderId(),
+                    command.getStoreId(),
+                    releasedItems
+            );
+
+            log.info("재고 해제 이벤트 발행 완료: orderId={}", command.getOrderId());
+
         } catch (Exception e) {
-            log.error("재고 해제 처리 중 오류: orderId={}, error={}", command.getOrderId(), e.getMessage(), e);
+            log.error("재고 해제 이벤트 발행 중 오류: orderId={}, error={}", command.getOrderId(), e.getMessage(), e);
             throw new StockException(StockErrorCode.INTERNAL_ERROR);
         }
     }

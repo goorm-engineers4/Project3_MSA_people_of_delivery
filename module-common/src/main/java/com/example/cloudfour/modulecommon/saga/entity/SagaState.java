@@ -45,6 +45,9 @@ public class SagaState {
     private String lastProcessedMsgId;
     
     private String errorMessage;
+
+    @Column(nullable = false)
+    private int releaseRetryCount;
     
     public void updateStatus(SagaStatus newStatus) {
         this.status = newStatus;
@@ -63,6 +66,13 @@ public class SagaState {
     
     public void updateLastProcessedMsgId(String msgId) {
         this.lastProcessedMsgId = msgId;
+        this.updatedAt = Instant.now();
+    }
+
+    public int getReleaseRetryCount() { return releaseRetryCount; }
+
+    public void incrementReleaseRetryCount() {
+        this.releaseRetryCount = this.releaseRetryCount + 1;
         this.updatedAt = Instant.now();
     }
 }

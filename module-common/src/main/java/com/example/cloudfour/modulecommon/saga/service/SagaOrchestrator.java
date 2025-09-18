@@ -229,6 +229,48 @@ public class SagaOrchestrator {
         }
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.saga.releaseRetry.maxAttempts:1}")
+    private int maxReleaseRetryAttempts;
+
+    @Transactional
+    public void retryReleaseInventory(String orderId, String msgId) {
+        try {
+            SagaState sagaState = sagaStateRepository.findBySagaId(orderId)
+                    .orElseThrow(() -> new RuntimeException("사가 상태를 찾을 수 없습니다: " + orderId));
+
+            if (sagaState.getReleaseRetryCount() >= maxReleaseRetryAttempts) {
+                log.warn("재고 해제 자동 재시도 한도 초과: orderId={}, attempts={}/{}",
+                        orderId, sagaState.getReleaseRetryCount(), maxReleaseRetryAttempts);
+                return;
+            }
+
+            sagaState.incrementReleaseRetryCount();
+            sagaStateRepository.save(sagaState);
+
+            List<InventoryCommands.ReleaseInventory.ReleaseItem> releaseItems =
+                    SagaDataConverter.parseOrderItemsFromSagaDataForRelease(sagaState.getSagaData());
+            String storeId = SagaDataConverter.extractStoreIdFromSagaData(sagaState.getSagaData());
+
+            InventoryCommands.ReleaseInventory releaseCommand =
+                    InventoryCommandConverter.toReleaseInventoryCommand(orderId, storeId, releaseItems);
+
+            messagePublisher.publishCommand(
+                    "inventory.commands.v1",
+                    orderId,
+                    releaseCommand,
+                    "order-saga-orchestrator",
+                    orderId,
+                    msgId
+            );
+
+            log.warn("재고 해제 자동 재시도 커맨드 발행: orderId={}, attempt={}/{}",
+                    orderId, sagaState.getReleaseRetryCount(), maxReleaseRetryAttempts);
+
+        } catch (Exception e) {
+            log.error("재고 해제 자동 재시도 발행 실패: orderId={}, error={}", orderId, e.getMessage(), e);
+        }
+    }
+
     private void handleSagaFailure(String orderId, String reason) {
         try {
             SagaState sagaState = sagaStateRepository.findBySagaId(orderId)

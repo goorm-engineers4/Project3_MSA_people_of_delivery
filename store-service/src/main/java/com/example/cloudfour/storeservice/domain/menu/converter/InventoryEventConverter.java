@@ -103,4 +103,15 @@ public class InventoryEventConverter {
                 .failedAt(Instant.now())
                 .build();
     }
+
+    public static InventoryEvents.InventoryReleaseCompleted createInventoryReleaseCompletedEvent(
+            UUID orderId, UUID storeId, boolean success, String reason) {
+        return InventoryEvents.InventoryReleaseCompleted.builder()
+                .orderId(orderId)
+                .storeId(storeId)
+                .success(success)
+                .reason(reason)
+                .completedAt(Instant.now())
+                .build();
+    }
 }

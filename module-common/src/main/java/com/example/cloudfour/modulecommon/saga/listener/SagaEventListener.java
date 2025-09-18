@@ -145,6 +145,8 @@ public class SagaEventListener {
                 handleInventoryCommitFailed(payload, envelope, acknowledgment);
             } else if ("InventoryReleased".equals(eventType)) {
                 handleInventoryReleased(payload, envelope, acknowledgment);
+            } else if ("InventoryReleaseCompleted".equals(eventType)) {
+                handleInventoryReleaseCompleted(payload, envelope, acknowledgment);
             } else {
                 log.warn("알 수 없는 재고 이벤트 타입: {}", eventType);
                 acknowledgment.acknowledge();
@@ -394,6 +396,72 @@ public class SagaEventListener {
 
             acknowledgment.acknowledge();
             
+        } catch (Exception e) {
+            log.error("재고 해제 완료 이벤트 처리 실패: error={}", e.getMessage(), e);
+            acknowledgment.acknowledge();
+        }
+    }
+
+    @org.springframework.beans.factory.annotation.Value("${app.saga.releaseRetry.enabled:true}")
+    private boolean releaseRetryEnabled;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.cloudfour.modulecommon.monitoring.NotificationService notificationService;
+
+    private final com.example.cloudfour.modulecommon.saga.repository.SagaStateRepository sagaStateRepository;
+    @org.springframework.beans.factory.annotation.Value("${app.saga.releaseRetry.maxAttempts:1}")
+    private int maxReleaseRetryAttempts;
+
+    private void handleInventoryReleaseCompleted(Object payload, Envelope<Object> envelope, Acknowledgment acknowledgment) {
+        try {
+            InventoryEvents.InventoryReleaseCompleted event;
+
+            if (payload instanceof LinkedHashMap) {
+                event = objectMapper.convertValue(payload, InventoryEvents.InventoryReleaseCompleted.class);
+            } else {
+                event = (InventoryEvents.InventoryReleaseCompleted) payload;
+            }
+            String orderId = event.getOrderId().toString();
+            Boolean success = event.getSuccess();
+            String reason = event.getReason();
+
+            log.info("재고 해제 완료 이벤트 처리: orderId={}, success={}, reason={}", orderId, success, reason);
+
+            if (Boolean.FALSE.equals(success)) {
+                var sagaOpt = sagaStateRepository.findBySagaId(orderId);
+                int current = sagaOpt.map(com.example.cloudfour.modulecommon.saga.entity.SagaState::getReleaseRetryCount).orElse(0);
+
+                // 상세 정보 구성(매장/아이템)
+                String storeId = sagaOpt.map(com.example.cloudfour.modulecommon.saga.entity.SagaState::getSagaData)
+                        .map(com.example.cloudfour.modulecommon.converter.SagaDataConverter::extractStoreIdFromSagaData)
+                        .orElse("unknown");
+                var items = sagaOpt.map(com.example.cloudfour.modulecommon.saga.entity.SagaState::getSagaData)
+                        .map(com.example.cloudfour.modulecommon.converter.SagaDataConverter::parseOrderItemsFromSagaDataForRelease)
+                        .orElse(java.util.List.of());
+                String itemsText = items.stream()
+                        .map(it -> String.format("- %s x%d (%s)", it.getMenuName(), it.getQuantity(), it.getMenuId()))
+                        .collect(java.util.stream.Collectors.joining("\n"));
+
+                if (releaseRetryEnabled && current < maxReleaseRetryAttempts) {
+                    sagaOrchestrator.retryReleaseInventory(orderId, envelope.getMeta().getMsgId());
+                    if (notificationService != null) {
+                        notificationService.sendAlert(
+                                "InventoryRelease 재시도 트리거",
+                                String.format("orderId=%s, storeId=%s, attempt(next)=%d/%d, reason=%s\nitems:\n%s",
+                                        orderId, storeId, current + 1, maxReleaseRetryAttempts, reason, itemsText));
+                    }
+                } else {
+                    if (notificationService != null) {
+                        notificationService.sendAlert(
+                                "InventoryRelease 실패(수동 확인 필요)",
+                                String.format("orderId=%s, storeId=%s, attempts=%d/%d, reason=%s\nitems:\n%s",
+                                        orderId, storeId, current, maxReleaseRetryAttempts, reason, itemsText));
+                    }
+                }
+            }
+
+            acknowledgment.acknowledge();
+
         } catch (Exception e) {
             log.error("재고 해제 완료 이벤트 처리 실패: error={}", e.getMessage(), e);
             acknowledgment.acknowledge();

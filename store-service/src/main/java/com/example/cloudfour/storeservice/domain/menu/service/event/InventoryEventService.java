@@ -97,6 +97,30 @@ public class InventoryEventService {
     }
     
     @Transactional
+    public void publishInventoryReleased(UUID orderId, UUID storeId, List<InventoryEvents.InventoryReleased.ReleasedItem> releasedItems) {
+        try {
+            InventoryEvents.InventoryReleased event = InventoryEventConverter.createInventoryReleasedEvent(
+                    orderId, storeId, releasedItems);
+
+            outboxService.saveEvent(
+                    orderId.toString(),
+                    "Inventory",
+                    "InventoryReleased",
+                    event,
+                    inventoryEventsTopic,
+                    orderId.toString()
+            );
+
+            log.info("InventoryReleased 이벤트 발행 완료: orderId={}, storeId={}", orderId, storeId);
+
+        } catch (Exception e) {
+            log.error("InventoryReleased 이벤트 발행 실패: orderId={}, error={}", 
+                    orderId, e.getMessage(), e);
+            throw new StockException(StockErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    @Transactional
     public void publishInventoryCommitFailed(UUID orderId, UUID storeId, String reason) {
         try {
             InventoryEvents.InventoryCommitFailed event = InventoryEventConverter.createInventoryCommitFailedEvent(

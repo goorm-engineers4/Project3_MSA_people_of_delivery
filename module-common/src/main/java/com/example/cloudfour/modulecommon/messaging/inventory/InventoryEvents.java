@@ -98,4 +98,15 @@ public class InventoryEvents {
         String reason;
         Instant failedAt;
     }
+
+    @Value
+    @Builder
+    @Jacksonized
+    public static class InventoryReleaseCompleted {
+        UUID orderId;
+        UUID storeId;
+        Boolean success;
+        String reason;
+        Instant completedAt;
+    }
 }
