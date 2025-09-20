@@ -76,7 +76,7 @@
 - **관측성**: 메트릭/로그/트레이스 3종 연동, Alertmanager→Slack
 
 ## 디렉토리 구조
-'''
+```
 Project3_MSA_people_of_delivery/
 ├─ apigateway/ # API Gateway
 ├─ discovery/ # Eureka
@@ -90,7 +90,7 @@ Project3_MSA_people_of_delivery/
 ├─ build.gradle
 ├─ settings.gradle
 └─ README.md
-'''
+```
 
 ## 인프라 구성도
 
